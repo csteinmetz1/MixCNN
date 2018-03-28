@@ -1,0 +1,7 @@
+.vscode
+mixes/
+multitracks/
+old/
+*.wav
+*.csv
+DSD100
