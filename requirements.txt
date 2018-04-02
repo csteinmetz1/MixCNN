@@ -1,0 +1,5 @@
+scipy=1.0.0
+numpy=1.14.2
+pandas=0.21.0
+librosa=0.5.1
+matplotlib=2.1.1
