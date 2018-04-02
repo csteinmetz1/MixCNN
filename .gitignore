@@ -4,4 +4,5 @@ multitracks/
 old/
 *.wav
 *.csv
+*.pkl
 DSD100
