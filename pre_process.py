@@ -17,8 +17,8 @@ def level_analysis():
     # dict to store columns
     database = []
     for idx, song in enumerate(glob.glob("DSD100/Sources/**/*")):
-        track_id = song.split('/')[3][0:3]
-        track_type = song.split('/')[2]
+        track_id = song.split('/')[len(song.split('/'))-1][0:3]
+        track_type = song.split('/')[len(song.split('/'))-2]
         if not os.path.isdir(os.path.join(song, "normalized")):
             os.makedirs(os.path.join(song, "normalized")) # create new dir to store normalized stems
         print("Analyzing {}...".format(track_id))
@@ -33,7 +33,7 @@ def level_analysis():
                                     'other ratio' : 0,
                                     'vocals ratio' : 0}))
         for stem in glob.glob(os.path.join(song,"*.wav")):
-            stem_class = stem.split('/')[4].split('.')[0]
+            stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
             # read file and measure LUFS
             rate, data = wavfile.read(stem)
             data = pyloudnorm.util.validate_input_data(data, rate)
@@ -71,7 +71,7 @@ def spectral_analysis(save_data=True, save_img=False):
             stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
             y, sr = librosa.load(stem, sr=44100, mono=True, duration=30.0)
             y_22k = librosa.resample(y, sr, 22050)
-            S = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=2048, hop_length=1024, n_mels=128)
+            S = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=8192, hop_length=4096, n_mels=128)
             database[idx][stem_class + ' spect'] = S
 
             if save_img:
@@ -88,7 +88,7 @@ def spectral_analysis(save_data=True, save_img=False):
         sys.stdout.write("Spectral analysis complete for track {0}             \n".format(track_id)) 
 
     # save ordereddict to pickle
-    pickle.dump(database, open("spectral_analysis.pkl", "wb"))
+    pickle.dump(database, open("spectral_analysis.pkl", "wb"), protocol=2)
     print("Saved spectral data for {0} tracks".format(len(database)))
 
 level_analysis()
