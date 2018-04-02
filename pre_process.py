@@ -91,4 +91,5 @@ def spectral_analysis(save_data=True, save_img=False):
     pickle.dump(database, open("spectral_analysis.pkl", "wb"))
     print("Saved spectral data for {0} tracks".format(len(database)))
 
+level_analysis()
 spectral_analysis()
