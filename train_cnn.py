@@ -9,11 +9,11 @@ import numpy as np
 import pandas as pd
 import pickle
 
-batch_size = 8
+batch_size = 2
 epochs = 10
 
 # input image dimensions
-spect_rows, spect_cols = 128, 648
+spect_rows, spect_cols = 128, 1292
 
 # import mel spectrogram data
 spectral_analysis = pickle.load(open("spectral_analysis.pkl", "rb"))
