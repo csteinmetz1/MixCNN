@@ -62,7 +62,7 @@ def build_model(input_shape, summary=False):
                     activation='relu',
                     input_shape=input_shape))
     model.add(Conv2D(64, (3, 3), activation='relu'))
-    model.add(MaxPooling2D(pool_size=(4, 4)))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
     model.add(Flatten())
     model.add(Dense(4))
@@ -76,7 +76,7 @@ def build_model(input_shape, summary=False):
 
 def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, save_weights=False):
 
-    batch_size = 2
+    batch_size = 10
     epochs = 100
 
     # checkpoint to save weights
@@ -117,7 +117,7 @@ if __name__ == "__main__":
         training_scores[i] = score
 
     total_loss = 0
-    total_score = 0
+    total_acc = 0
     for i, score in training_scores.items():
         print("For fold", i+1, "Test loss:", score[0], "and Test accuracy:", score[1])
         total_loss += score[0]
