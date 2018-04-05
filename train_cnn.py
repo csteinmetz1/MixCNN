@@ -13,9 +13,6 @@ import numpy as np
 import pandas as pd
 import pickle
 
-batch_size = 2
-epochs = 100
-
 def load_data():
     # import mel spectrogram data
     spectral_analysis = pickle.load(open("spectral_analysis.pkl", "rb"))
@@ -59,7 +56,7 @@ def load_data():
 
     return X, Y, input_shape
 
-def build_model(input_shape):
+def build_model(input_shape, summary=False):
     model = Sequential()
     model.add(Conv2D(32, kernel_size=(3, 3),
                     activation='relu',
@@ -71,37 +68,64 @@ def build_model(input_shape):
     model.add(Dense(4))
 
     model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adadelta(), metrics=['accuracy'])
-    model.summary()
+
+    if summary:
+        model.summary()
 
     return model
 
-def train_and_eval_model(model, X_train, Y_train, X_test, Y_test):
+def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, save_weights=False):
+
+    batch_size = 2
+    epochs = 100
 
     # checkpoint to save weights
     filepath='checkpoints/checkpoint-{epoch:02d}-{loss:.4f}.hdf5'
     checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
-
-    model.fit(X_train, Y_train,
-                batch_size=batch_size,
-                epochs=epochs,
-                verbose=1,
-                validation_data=(X_test, Y_test),
-                callbacks=[checkpoint])
+    
+    if save_weights:
+        model.fit(X_train, Y_train,
+            batch_size=batch_size,
+            epochs=epochs,
+            verbose=1,
+            validation_data=(X_test, Y_test),
+            callbacks=[checkpoint])
+    else:
+        model.fit(X_train, Y_train,
+            batch_size=batch_size,
+            epochs=epochs,
+            verbose=1,
+            validation_data=(X_test, Y_test))
 
     score = model.evaluate(X_test, Y_test, verbose=0)
     print('Test loss:', score[0])
     print('Test accuracy:', score[1])
+
+    return score
 
 if __name__ == "__main__":
     n_folds = 2
     X, Y, input_shape = load_data()
     kf = KFold(n_splits=n_folds)
 
+    training_scores = {}
     for i, (train_index, test_index) in enumerate(kf.split(X)):
         print("Running fold", i+1, "of", n_folds)
         model = None # clear the model
         model = build_model(input_shape)
-        train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
+        score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
+        training_scores[i] = score
+
+    total_loss = 0
+    total_score = 0
+    for i, score in training_scores.items():
+        print("For fold", i+1, "Test loss:", score[0], "and Test accuracy:", score[1])
+        total_loss += score[0]
+        total_acc += score[1] 
+    
+    print("Average test loss:", total_loss/n_folds)
+    print("Average test accuracy:", total_acc/n_folds)
+
 
     
 
