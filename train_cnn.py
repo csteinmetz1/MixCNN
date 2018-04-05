@@ -77,7 +77,7 @@ def build_model(input_shape, summary=False):
 def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, save_weights=False):
 
     batch_size = 10
-    epochs = 100
+    epochs = 250
 
     # checkpoint to save weights
     filepath='checkpoints/checkpoint-{epoch:02d}-{loss:.4f}.hdf5'
@@ -104,7 +104,7 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, save_weights=F
     return score
 
 if __name__ == "__main__":
-    n_folds = 2
+    n_folds = 20
     X, Y, input_shape = load_data()
     kf = KFold(n_splits=n_folds)
 
