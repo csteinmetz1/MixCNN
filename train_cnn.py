@@ -9,6 +9,8 @@ from keras import backend as K
 from keras import losses
 from keras import optimizers
 from sklearn.model_selection import KFold
+from datetime import datetime
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pickle
@@ -35,10 +37,6 @@ def load_data():
         x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], x_test.shape[2], 1)
         input_shape = (x_train.shape[1], x_train.shape[2], 1)
 
-    print('x_train shape:', x_train.shape)
-    print(x_train.shape[0], 'train samples')
-    print(x_test.shape[0], 'test samples')
-
     # import output (level anaylsis) data
     level_analysis = pd.read_csv("level_analysis.csv")
 
@@ -54,17 +52,19 @@ def load_data():
     X = np.concatenate((x_train, x_test))
     Y = np.concatenate((y_train, y_test))
 
+    print("Loaded inputs with shape:", X.shape)
+    print("Loaded outputs with shape:", Y.shape)
+
     return X, Y, input_shape
 
 def build_model(input_shape, summary=False):
     model = Sequential()
-    model.add(Conv2D(32, kernel_size=(3, 3),
-                    activation='relu',
-                    input_shape=input_shape))
+    model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
+    model.add(Dropout(0.25))
     model.add(Conv2D(64, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
-    model.add(Dropout(0.25))
     model.add(Flatten())
+    model.add(Dropout(0.25))
     model.add(Dense(3))
 
     model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adadelta())
@@ -84,14 +84,14 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True
     checkpoint = ModelCheckpoint(filepath, monitor='loss', verbose=1, save_best_only=True, mode='min')
     
     if save_weights:
-        model.fit(X_train, Y_train,
+        history = model.fit(X_train, Y_train,
             batch_size=batch_size,
             epochs=epochs,
             verbose=1,
             validation_data=(X_test, Y_test),
             callbacks=[checkpoint])
     else:
-        model.fit(X_train, Y_train,
+        history = model.fit(X_train, Y_train,
             batch_size=batch_size,
             epochs=epochs,
             verbose=1,
@@ -105,29 +105,53 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True
         print("We expect:", Y_test[0])
         print("we predict:", pred[0])
 
-    return score
+    return history, score
 
 if __name__ == "__main__":
     n_folds = 2
     X, Y, input_shape = load_data()
     kf = KFold(n_splits=n_folds)
 
-    training_scores = {}
+    training_history = {}
     for i, (train_index, test_index) in enumerate(kf.split(X)):
         print("Running fold", i+1, "of", n_folds)
         model = None # clear the model
         model = build_model(input_shape)
-        score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
-        training_scores[i] = score
+        history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
+        training_history[i] = {'score' : score, 'history': history}
 
-    total_loss = 0
-    for i, score in training_scores.items():
-        print("For fold {0:d} - Test loss: {1:0.4f} MSE".format(i+1, score))
-        total_loss += score
+    # get the date and time and format it
+    date_and_time = str(datetime.now()).split(' ')
+    date = date_and_time[0]
+    time = ('-').join(date_and_time[1].split(':')[0:2])
 
-    mean = total_loss/n_folds
-    std = [np.square(score - mean) for score in training_scores.items()]
-    std = np.mean(std)
-    std = np.sqrt(std)
+    # Save training results to file
+    with open("train_cnn_{0}--{1}.txt".format(date, time), 'w') as results:
+        results.write("--- COMPLETED ---\n")
+        results.write("{0} at {1}\n\n".format(date, time))
+        results.write("--- MSE RESULTS ---\n")
+        for i, stats in training_history.items():
+            results.write("For fold {0:d} - Test loss: {1:0.4f} MSE\n".format(i+1, stats['score']))
+        mean = np.mean([fold['score'] for i, fold in training_history.items()])
+        std = np.std([fold['score'] for i, fold in training_history.items()])
+        results.write("Average test loss: {0:0.4f} ({1:0.4f}) MSE\n".format(mean, std))
+        results.write("\n--- NETWORK ARCHITECTURE ---\n")
+        model.summary(print_fn=lambda x: results.write(x + '\n'))
 
-    print("Average test loss: {0:0.4f} ({1:0.4f}) MSE".format(mean, std))
+    # create training loss plots
+    for i, fold in training_history.items():
+        loss = fold['history'].history['loss']
+        val_loss = fold['history'].history['val_loss']
+
+        t = np.arange(1, len(loss)+1)
+        plt.subplot(2, 1, 1)
+        plt.plot(t, loss)
+        plt.ylabel('Training Loss (MSE)')
+        plt.title('Training Loss (MSE)')
+
+        plt.subplot(2, 1, 2)
+        plt.plot(t, val_loss)
+        plt.xlabel('Epoch')
+        plt.ylabel('Validation Loss (MSE)')
+
+    plt.savefig("figs/train_and_val_loss_{0}--{1}.png".format(date, time))
