@@ -46,9 +46,9 @@ def load_data():
     y_train_rows = level_analysis.loc[level_analysis['type'] == 'Dev']
     y_test_rows = level_analysis.loc[level_analysis['type'] == 'Test']
 
-    # crate array of length 4 arrays
-    y_train = np.array([np.array([row[1]['bass ratio'], row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_train_rows.iterrows()])
-    y_test = np.array([np.array([row[1]['bass ratio'], row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_test_rows.iterrows()])
+    # crate array of length 3 - exclude the bass loudness ratio
+    y_train = np.array([np.array([row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_train_rows.iterrows()])
+    y_test = np.array([np.array([row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_test_rows.iterrows()])
 
     # create lists of total dataset
     X = np.concatenate((x_train, x_test))
@@ -65,16 +65,16 @@ def build_model(input_shape, summary=False):
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Dropout(0.25))
     model.add(Flatten())
-    model.add(Dense(4))
+    model.add(Dense(3))
 
-    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam())
+    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adadelta())
 
     if summary:
         model.summary()
 
     return model
 
-def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, save_weights=False):
+def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True, save_weights=False):
 
     batch_size = 10
     epochs = 10
@@ -99,6 +99,11 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, save_weights=F
 
     score = model.evaluate(X_test, Y_test, verbose=0)
     print('Test loss:', score)
+
+    if show_pred:
+        pred = model.predict(X_test)
+        print("We expect:", Y_test[0])
+        print("we predict:", pred[0])
 
     return score
 
@@ -126,8 +131,3 @@ if __name__ == "__main__":
     std = np.sqrt(std)
 
     print("Average test loss: {0:0.4f} ({1:0.4f}) MSE".format(mean, std))
-
-
-    
-
-
