@@ -8,6 +8,7 @@ from keras.layers import Conv2D, MaxPooling2D
 from keras import backend as K
 from keras import losses
 from keras import optimizers
+from keras.constraints import maxnorm
 from sklearn.model_selection import KFold
 from datetime import datetime
 import matplotlib
@@ -76,6 +77,35 @@ def build_model(input_shape, summary=False):
 
     return model
 
+def build_model_larger(input_shape, summary=False):
+    model = Sequential()
+    model.add(Conv2D(32, (3, 3), input_shape=input_shape, activation='relu', padding='same'))
+    model.add(Dropout(0.2))
+    model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
+    model.add(Dropout(0.2))
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
+    model.add(Dropout(0.2))
+    model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Flatten())
+    model.add(Dropout(0.2))
+    model.add(Dense(64, activation='relu', kernel_constraint=maxnorm(3)))
+    model.add(Dropout(0.2))
+    model.add(Dense(16, activation='relu', kernel_constraint=maxnorm(3)))
+    model.add(Dropout(0.2))
+    model.add(Dense(3))
+
+    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adadelta())
+
+    if summary:
+        model.summary()
+
+    return model
+
 def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True, save_weights=False):
 
     batch_size = 10
@@ -118,9 +148,9 @@ if __name__ == "__main__":
     for i, (train_index, test_index) in enumerate(kf.split(X)):
         print("Running fold", i+1, "of", n_folds)
         model = None # clear the model
-        model = build_model(input_shape)
+        model = build_model_larger(input_shape)
         history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
-        training_history[i] = {'score' : score, 'history': history}
+        training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
 
     # get the date and time and format it
     date_and_time = str(datetime.now()).split(' ')
@@ -141,19 +171,19 @@ if __name__ == "__main__":
         model.summary(print_fn=lambda x: results.write(x + '\n'))
 
     # create training loss plots
-    for i, fold in training_history.items():
-        loss = fold['history'].history['loss']
-        val_loss = fold['history'].history['val_loss']
+    #for i, fold in training_history.items():
+    #    loss = fold['history'].history['loss']
+    #    val_loss = fold['history'].history['val_loss']
 
-        t = np.arange(1, len(loss)+1)
-        plt.subplot(2, 1, 1)
-        plt.plot(t, loss)
-        plt.ylabel('Training Loss (MSE)')
-        plt.title('Training Loss (MSE)')
+    #    t = np.arange(1, len(loss)+1)
+    #    plt.subplot(2, 1, 1)
+    #    plt.plot(t, loss)
+    #    plt.ylabel('Training Loss (MSE)')
+    #    plt.title('Training Loss (MSE)')
 
-        plt.subplot(2, 1, 2)
-        plt.plot(t, val_loss)
-        plt.xlabel('Epoch')
-        plt.ylabel('Validation Loss (MSE)')
+    #    plt.subplot(2, 1, 2)
+    #    plt.plot(t, val_loss)
+    #    plt.xlabel('Epoch')
+    #    plt.ylabel('Validation Loss (MSE)')
 
     plt.savefig("figs/train_and_val_loss_{0}--{1}.png".format(date, time))
