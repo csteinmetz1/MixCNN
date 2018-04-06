@@ -67,7 +67,7 @@ def build_model(input_shape, summary=False):
     model.add(Flatten())
     model.add(Dense(4))
 
-    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adadelta(), metrics=['accuracy'])
+    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam())
 
     if summary:
         model.summary()
@@ -77,7 +77,7 @@ def build_model(input_shape, summary=False):
 def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, save_weights=False):
 
     batch_size = 10
-    epochs = 250
+    epochs = 10
 
     # checkpoint to save weights
     filepath='checkpoints/checkpoint-{epoch:02d}-{loss:.4f}.hdf5'
@@ -98,13 +98,12 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, save_weights=F
             validation_data=(X_test, Y_test))
 
     score = model.evaluate(X_test, Y_test, verbose=0)
-    print('Test loss:', score[0])
-    print('Test accuracy:', score[1])
+    print('Test loss:', score)
 
     return score
 
 if __name__ == "__main__":
-    n_folds = 20
+    n_folds = 2
     X, Y, input_shape = load_data()
     kf = KFold(n_splits=n_folds)
 
@@ -117,14 +116,16 @@ if __name__ == "__main__":
         training_scores[i] = score
 
     total_loss = 0
-    total_acc = 0
     for i, score in training_scores.items():
-        print("For fold", i+1, "Test loss:", score[0], "and Test accuracy:", score[1])
-        total_loss += score[0]
-        total_acc += score[1] 
-    
-    print("Average test loss:", total_loss/n_folds)
-    print("Average test accuracy:", total_acc/n_folds)
+        print("For fold {0:d} - Test loss: {1:0.4f} MSE".format(i+1, score))
+        total_loss += score
+
+    mean = total_loss/n_folds
+    std = [np.square(score - mean) for score in training_scores.items()]
+    std = np.mean(std)
+    std = np.sqrt(std)
+
+    print("Average test loss: {0:0.4f} ({1:0.4f}) MSE".format(mean, std))
 
 
     
