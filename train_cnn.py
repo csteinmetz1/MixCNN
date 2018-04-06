@@ -10,6 +10,8 @@ from keras import losses
 from keras import optimizers
 from sklearn.model_selection import KFold
 from datetime import datetime
+import matplotlib
+matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -126,7 +128,7 @@ if __name__ == "__main__":
     time = ('-').join(date_and_time[1].split(':')[0:2])
 
     # Save training results to file
-    with open("train_cnn_{0}--{1}.txt".format(date, time), 'w') as results:
+    with open("reports/train_cnn_{0}--{1}.txt".format(date, time), 'w') as results:
         results.write("--- COMPLETED ---\n")
         results.write("{0} at {1}\n\n".format(date, time))
         results.write("--- MSE RESULTS ---\n")
