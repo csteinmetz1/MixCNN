@@ -170,20 +170,4 @@ if __name__ == "__main__":
         results.write("\n--- NETWORK ARCHITECTURE ---\n")
         model.summary(print_fn=lambda x: results.write(x + '\n'))
 
-    # create training loss plots
-    #for i, fold in training_history.items():
-    #    loss = fold['history'].history['loss']
-    #    val_loss = fold['history'].history['val_loss']
-
-    #    t = np.arange(1, len(loss)+1)
-    #    plt.subplot(2, 1, 1)
-    #    plt.plot(t, loss)
-    #    plt.ylabel('Training Loss (MSE)')
-    #    plt.title('Training Loss (MSE)')
-
-    #    plt.subplot(2, 1, 2)
-    #    plt.plot(t, val_loss)
-    #    plt.xlabel('Epoch')
-    #    plt.ylabel('Validation Loss (MSE)')
-
-    plt.savefig("figs/train_and_val_loss_{0}--{1}.png".format(date, time))
+    pickle.dump(training_history, open("reports/training_history_{0}--{1}.pkl".format(date, time), "wb"), protocol=2)
