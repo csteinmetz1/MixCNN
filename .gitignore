@@ -1,8 +1,13 @@
-.vscode
-mixes/
-multitracks/
+# directories
+DSD100/
+figs/
+reports/
+checkpoints/
 old/
+
+# files
+.vscode
 *.wav
 *.csv
 *.pkl
-DSD100
+ideas.txt
