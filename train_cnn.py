@@ -11,12 +11,19 @@ from keras import optimizers
 from keras.constraints import maxnorm
 from sklearn.model_selection import KFold
 from datetime import datetime
+import os
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import pickle
+
+def get_date_and_time():
+    date_and_time = str(datetime.now()).split(' ')
+    date = date_and_time[0]
+    time = ('-').join(date_and_time[1].split(':')[0:2])
+    return date, time
 
 def load_data():
     # import mel spectrogram data
@@ -93,13 +100,13 @@ def build_model_larger(input_shape, summary=False):
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
     model.add(Dropout(0.2))
-    model.add(Dense(64, activation='relu', kernel_constraint=maxnorm(3)))
+    model.add(Dense(512, activation='relu'))
     model.add(Dropout(0.2))
-    model.add(Dense(16, activation='relu', kernel_constraint=maxnorm(3)))
+    model.add(Dense(128, activation='relu'))
     model.add(Dropout(0.2))
     model.add(Dense(3))
 
-    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adadelta())
+    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam())
 
     if summary:
         model.summary()
@@ -144,6 +151,9 @@ if __name__ == "__main__":
     X, Y, input_shape = load_data()
     kf = KFold(n_splits=n_folds)
 
+    # get the start date and time and format it
+    date, time = get_date_and_time()
+
     training_history = {}
     for i, (train_index, test_index) in enumerate(kf.split(X)):
         print("Running fold", i+1, "of", n_folds)
@@ -152,15 +162,17 @@ if __name__ == "__main__":
         history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
         training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
 
-    # get the date and time and format it
-    date_and_time = str(datetime.now()).split(' ')
-    date = date_and_time[0]
-    time = ('-').join(date_and_time[1].split(':')[0:2])
+    # get the end date and time and format it
+    end_date, end_time = get_date_and_time()
+
+    if not os.path.isdir(os.path.join("reports", "{0}--{1}".format(date, time))):
+        os.makedirs(os.path.join("reports", "{0}--{1}".format(date, time)))
 
     # Save training results to file
-    with open("reports/train_cnn_{0}--{1}.txt".format(date, time), 'w') as results:
-        results.write("--- COMPLETED ---\n")
-        results.write("{0} at {1}\n\n".format(date, time))
+    with open(os.path.join("reports", "{0}--{1}".format(date, time), "report_summary.txt"), 'w') as results:
+        results.write("--- RUNTIME ---\n")
+        results.write("Start time: {0} at {1}\n".format(date, time))
+        results.write("End time:   {0} at {1}\n\n".format(end_date, end_time))
         results.write("--- MSE RESULTS ---\n")
         for i, stats in training_history.items():
             results.write("For fold {0:d} - Test loss: {1:0.4f} MSE\n".format(i+1, stats['score']))
@@ -170,4 +182,4 @@ if __name__ == "__main__":
         results.write("\n--- NETWORK ARCHITECTURE ---\n")
         model.summary(print_fn=lambda x: results.write(x + '\n'))
 
-    pickle.dump(training_history, open("reports/training_history_{0}--{1}.pkl".format(date, time), "wb"), protocol=2)
+    pickle.dump(training_history, open(os.path.join("reports", "{0}--{1}".format(date, time), "training_history.pkl"), "wb"), protocol=2)
