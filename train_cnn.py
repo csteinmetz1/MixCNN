@@ -124,12 +124,13 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True
 
     if show_pred:
         pred = model.predict(X_test)
-        print("We expect:", Y_test[0])
-        print("we predict:", pred[0])
+        print("We expect:", Y_test)
+        print("we predict:", pred)
 
     return history, score
 
 if __name__ == "__main__":
+    train = 'k fold'
     n_folds = 2
     spect_type = 'mel'
     spect_size = 'sm'
@@ -144,13 +145,26 @@ if __name__ == "__main__":
 
     training_history = {}
     saved_model = None
-    for i, (train_index, test_index) in enumerate(kf.split(X)):
-        print("Running fold", i+1, "of", n_folds)
+
+    if train == 'k fold':
+        for i, (train_index, test_index) in enumerate(kf.split(X)):
+            print("Running fold", i+1, "of", n_folds)
+            model = build_model(input_shape)
+            history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
+            training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
+            if i == 0:
+                saved_model = model
+            K.clear_session()
+            del history
+            del model
+            gc.collect()
+    if train == 'single':
+        split = int(np.floor(X.shape[0]*0.8))
         model = build_model(input_shape)
-        history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
-        training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
-        if i == 0:
-            saved_model = model
+        print(X[:split, :].shape, Y[:split, :].shape, X[split:, :].shape, Y[split:, :].shape)
+        history, score = train_and_eval_model(model, X[:split, :], Y[:split, :], X[split:, :], Y[split:, :])
+        training_history[0] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
+        saved_model = model
         K.clear_session()
         del history
         del model
