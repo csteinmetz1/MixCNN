@@ -13,6 +13,7 @@ from sklearn.model_selection import KFold
 from datetime import datetime
 import os
 import gc
+import glob
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -26,32 +27,22 @@ def get_date_and_time():
     time = ('-').join(date_and_time[1].split(':')[0:2])
     return date, time
 
-def load_data():
-    # import mel spectrogram data
-    spectral_analysis = pickle.load(open("spectral_analysis.pkl", "rb"))
+def load_data(spect_type='mel', spect_size='sm'):
 
-    # sort out train and test data
-    x_train_rows = [row for row in spectral_analysis if row['type'] == 'Dev']
-    x_test_rows = [row for row in spectral_analysis if row['type'] == 'Test']
+    key = "{0} {1}".format(spect_type, spect_size)
 
-    x_train = np.array([np.dstack((row['bass mel'], row['drums mel'], row['other mel'], row['vocals mel'])) for row in x_train_rows])
-    x_test = np.array([np.dstack((row['bass mel'], row['drums mel'], row['other mel'], row['vocals mel'])) for row in x_test_rows])
-    input_shape = (x_train.shape[1], x_train.shape[2], 4)
+    y_rows = []
+    x_rows = []
+    for idx, song in enumerate(glob.glob("data/*.pkl")):
+        row = pickle.load(open(song, "rb"))
+        y_rows.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+        x_rows.append(np.dstack((row['bass ' + key], row['drums ' + key], row['other ' + key], row['vocals ' + key])))
 
-    # import output (level anaylsis) data
-    level_analysis = pd.read_csv("level_analysis.csv")
+    # transform into numpy arrays
+    Y = np.array([row for row in y_rows])
+    X = np.array([row for row in x_rows])
 
-    # sort out train and test data
-    y_train_rows = level_analysis.loc[level_analysis['type'] == 'Dev']
-    y_test_rows = level_analysis.loc[level_analysis['type'] == 'Test']
-
-    # crate array of length 3 - exclude the bass loudness ratio
-    y_train = np.array([np.array([row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_train_rows.iterrows()])
-    y_test = np.array([np.array([row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_test_rows.iterrows()])
-
-    # create lists of total dataset
-    X = np.concatenate((x_train, x_test))
-    Y = np.concatenate((y_train, y_test))
+    input_shape = (X.shape[1], X.shape[2], 4) # four instruments - 1 per channel
 
     print("Loaded inputs with shape:", X.shape)
     print("Loaded outputs with shape:", Y.shape)
@@ -68,7 +59,7 @@ def build_model(input_shape, summary=False):
     model.add(Dropout(0.25))
     model.add(Dense(3))
 
-    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adadelta())
+    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam())
 
     if summary:
         model.summary()
@@ -106,8 +97,8 @@ def build_model_larger(input_shape, summary=False):
 
 def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True, save_weights=False):
 
-    batch_size = 10
-    epochs = 10
+    batch_size = 1
+    epochs = 100
 
     # checkpoint to save weights
     filepath='checkpoints/checkpoint-{epoch:02d}-{loss:.4f}.hdf5'
@@ -139,7 +130,9 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True
 
 if __name__ == "__main__":
     n_folds = 2
-    X, Y, input_shape = load_data()
+    spect_type = 'mel'
+    spect_size = 'sm'
+    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size)
     kf = KFold(n_splits=n_folds)
 
     # get the start date and time and format it
@@ -152,7 +145,7 @@ if __name__ == "__main__":
     saved_model = None
     for i, (train_index, test_index) in enumerate(kf.split(X)):
         print("Running fold", i+1, "of", n_folds)
-        model = build_model_larger(input_shape)
+        model = build_model(input_shape)
         history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
         training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
         if i == 0:
@@ -180,7 +173,7 @@ if __name__ == "__main__":
         results.write("--- RUNTIME ---\n")
         results.write("Start time: {0} at {1}\n".format(date, time))
         results.write("End time:   {0} at {1}\n".format(end_date, end_time))
-        results.write("Runtime:    {0:d} days {0:d} hrs {1:d} mins\n\n".format(elp_days, elp_hrs, elp_mins))
+        results.write("Runtime:    {0:d} days {1:d} hrs {2:d} mins\n\n".format(elp_days, elp_hrs, elp_mins))
         results.write("--- MSE RESULTS ---\n")
         for i, stats in training_history.items():
             results.write("For fold {0:d} - Test loss: {1:0.4f} MSE\n".format(i+1, stats['score']))
@@ -189,5 +182,8 @@ if __name__ == "__main__":
         results.write("Average test loss: {0:0.4f} ({1:0.4f}) MSE\n".format(mean, std))
         results.write("\n--- NETWORK ARCHITECTURE ---\n")
         saved_model.summary(print_fn=lambda x: results.write(x + '\n'))
+        results.write("--- TRAINING DETAILS ---\n")
+        results.write("Spectrogram type: {0}".format(spect_type))
+        results.write("Spectrogram size: {0}".format(spect_size))
 
     pickle.dump(training_history, open(os.path.join("reports", "{0}--{1}".format(date, time), "training_history.pkl"), "wb"), protocol=2)
