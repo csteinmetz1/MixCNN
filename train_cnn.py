@@ -34,19 +34,9 @@ def load_data():
     x_train_rows = [row for row in spectral_analysis if row['type'] == 'Dev']
     x_test_rows = [row for row in spectral_analysis if row['type'] == 'Test']
 
-    # stack subgroup spectrograms as channels
-    dstack = True 
-
-    if dstack:
-        x_train = np.array([np.dstack((row['bass spect'], row['drums spect'], row['other spect'], row['vocals spect'])) for row in x_train_rows])
-        x_test = np.array([np.dstack((row['bass spect'], row['drums spect'], row['other spect'], row['vocals spect'])) for row in x_test_rows])
-        input_shape = (x_train.shape[1], x_train.shape[2], 4)
-    else:
-        x_train = np.array([np.hstack((row['bass spect'], row['drums spect'], row['other spect'], row['vocals spect'])) for row in x_train_rows])
-        x_test = np.array([np.hstack((row['bass spect'], row['drums spect'], row['other spect'], row['vocals spect'])) for row in x_test_rows])
-        x_train = x_train.reshape(x_train.shape[0], x_train.shape[1], x_train.shape[2], 1)
-        x_test = x_test.reshape(x_test.shape[0], x_test.shape[1], x_test.shape[2], 1)
-        input_shape = (x_train.shape[1], x_train.shape[2], 1)
+    x_train = np.array([np.dstack((row['bass mel'], row['drums mel'], row['other mel'], row['vocals mel'])) for row in x_train_rows])
+    x_test = np.array([np.dstack((row['bass mel'], row['drums mel'], row['other mel'], row['vocals mel'])) for row in x_test_rows])
+    input_shape = (x_train.shape[1], x_train.shape[2], 4)
 
     # import output (level anaylsis) data
     level_analysis = pd.read_csv("level_analysis.csv")
