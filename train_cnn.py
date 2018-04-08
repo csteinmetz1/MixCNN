@@ -160,11 +160,12 @@ if __name__ == "__main__":
     training_history = {}
     for i, (train_index, test_index) in enumerate(kf.split(X)):
         print("Running fold", i+1, "of", n_folds)
-        model = None # clear the model
-        K.clear_session() 
         model = build_model_larger(input_shape)
         history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
         training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
+        del history
+        del model
+        gc.collect()
 
     # get the end date and time and format it
     end_date, end_time = get_date_and_time()
