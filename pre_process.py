@@ -42,7 +42,7 @@ def level_analysis():
             database[idx][stem_class + ' LUFS'] = stem_loudness
             database[idx][stem_class + ' ratio'] = database[idx]['bass LUFS'] / stem_loudness
             # normalize stem - NOTE: this currently produces a 32-bit floating point .wav 
-            ln_audio = pyloudnorm.normalize.loudness(data, rate, -30.0)
+            ln_audio = pyloudnorm.normalize.loudness(data, rate, -24.0)
             wavfile.write(os.path.join(song, "normalized", stem_class + ".wav"), rate, ln_audio)
 
     # create dataframe and save result to csv
@@ -50,9 +50,20 @@ def level_analysis():
     dataframe.to_csv("level_analysis.csv", sep=',')
     print("Saved level data for {0} tracks".format(len(database)))
 
+    return database
+
 def spectral_analysis(save_data=True, save_img=False):
-    # dict to store columns
-    database = []
+
+    level_analysis = pd.read_csv("level_analysis.csv")
+
+    # sort out train and test data
+    y_train_rows = level_analysis.loc[level_analysis['type'] == 'Dev']
+    y_test_rows = level_analysis.loc[level_analysis['type'] == 'Test']
+
+    # crate array of length 3 - exclude the bass loudness ratio
+    y_train = np.array([np.array([row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_train_rows.iterrows()])
+    y_test = np.array([np.array([row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_test_rows.iterrows()])
+
     for idx, song in enumerate(glob.glob("DSD100/Sources/**/*")):
         track_id = song.split('/')[len(song.split('/'))-1][0:3]
         track_type = song.split('/')[len(song.split('/'))-2]
@@ -60,36 +71,71 @@ def spectral_analysis(save_data=True, save_img=False):
         if not os.path.isdir(os.path.join(song, "img")):
             os.makedirs(os.path.join(song, "img"))
 
-        database.append(OrderedDict({'type' : track_type,
-                                    'track id' : track_id, 
-                                    'bass spect' : [],
-                                    'drums spect' : [],
-                                    'other spect' : [],
-                                    'vocals spect' : []}))
+        bass_ratio = float(level_analysis.loc[level_analysis['track id'] == int(track_id)]['bass ratio'])
+        drums_ratio = float(level_analysis.loc[level_analysis['track id'] == int(track_id)]['drums ratio'])
+        other_ratio = float(level_analysis.loc[level_analysis['track id'] == int(track_id)]['other ratio'])
+        vocals_ratio = float(level_analysis.loc[level_analysis['track id'] == int(track_id)]['vocals ratio'])
+
+        database = (OrderedDict({'type' : track_type,
+                                    'track id' : track_id,
+                                    'bass ratio' : bass_ratio,
+                                    'drums ratio' : drums_ratio,
+                                    'other ratio' : other_ratio,
+                                    'vocals ratio' : vocals_ratio,
+                                    'bass mel sm' : [],
+                                    'drums mel sm' : [],
+                                    'other mel sm' : [],
+                                    'vocals mel sm' : [],
+                                    'bass mel lg' : [],
+                                    'drums mel lg' : [],
+                                    'other mel lg' : [],
+                                    'vocals mel lg' : [],
+                                    'bass mfcc sm' : [],
+                                    'drums mfcc sm' : [],
+                                    'other mfcc sm' : [],
+                                    'vocals mfcc sm' : [],
+                                    'bass mfcc lg' : [],
+                                    'drums mfcc lg' : [],
+                                    'other mfcc lg' : [],
+                                    'vocals mfcc lg' : []}))
 
         for stem in glob.glob(os.path.join(song, "normalized", "*.wav")):
             stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
-            y, sr = librosa.load(stem, sr=44100, mono=True, duration=30.0)
+            y, sr = librosa.load(stem, sr=44100, mono=True)
+            y = librosa.util.fix_length(y, sr*180)
             y_22k = librosa.resample(y, sr, 22050)
-            S = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=4096, hop_length=2048, n_mels=128)
-            database[idx][stem_class + ' spect'] = S
+            mel_sm = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=4096, hop_length=2048, n_mels=128)
+            mel_lg = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=2048, hop_length=1024, n_mels=128)
+            mfcc_sm = librosa.feature.mfcc(S=librosa.power_to_db(mel_sm), n_mfcc=20)
+            mfcc_lg = librosa.feature.mfcc(S=librosa.power_to_db(mel_lg), n_mfcc=20)
+            database[stem_class + ' mel sm'] = mel_sm
+            database[stem_class + ' mel lg'] = mel_lg
+            database[stem_class + ' mfcc sm'] = mfcc_sm
+            database[stem_class + ' mfcc lg'] = mfcc_lg
 
             if save_img:
                 plt.figure(figsize=(10, 4))
-                librosa.display.specshow(librosa.power_to_db(S, ref=np.max), y_axis='mel', x_axis='time')
+                librosa.display.specshow(librosa.power_to_db(mel_sm, ref=np.max), y_axis='mel', x_axis='time')
                 plt.colorbar(format='%+2.0f dB')
                 plt.title('Mel spectrogram of normalized ' + stem_class)
                 plt.tight_layout()
-                plt.savefig(os.path.join(song, "img", stem_class + ".png")) 
+                plt.savefig(os.path.join(song, "img", "mel_" + stem_class + ".png")) 
+
+                plt.figure(figsize=(10, 4))
+                librosa.display.specshow(mfcc_sm, x_axis='time')
+                plt.colorbar()
+                plt.title('MFCC')
+                plt.tight_layout() 
+                plt.savefig(os.path.join(song, "img", "mfcc_" + stem_class + ".png")) 
+
+                plt.close('all')
 
             sys.stdout.write("Saved Mel spectrogram data of track {1} - {0}   \r".format(stem_class, track_id))
             sys.stdout.flush()
 
+        # save ordereddict to pickle
+        pickle.dump(database, open(os.path.join("data", "spectral_analysis_{0}.pkl".format(track_id)), "wb"), protocol=2)
         sys.stdout.write("Spectral analysis complete for track {0}             \n".format(track_id)) 
 
-    # save ordereddict to pickle
-    pickle.dump(database, open("spectral_analysis.pkl", "wb"), protocol=2)
-    print("Saved spectral data for {0} tracks".format(len(database)))
-
-level_analysis()
+#level_analysis()
 spectral_analysis()
