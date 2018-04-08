@@ -12,6 +12,7 @@ from keras.constraints import maxnorm
 from sklearn.model_selection import KFold
 from datetime import datetime
 import os
+import gc
 import matplotlib
 matplotlib.use('Agg')
 import matplotlib.pyplot as plt
@@ -158,11 +159,15 @@ if __name__ == "__main__":
     start_mins = time.split('-')[1]
 
     training_history = {}
+    saved_model = None
     for i, (train_index, test_index) in enumerate(kf.split(X)):
         print("Running fold", i+1, "of", n_folds)
         model = build_model_larger(input_shape)
         history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
         training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
+        if i == 0:
+            saved_model = model
+        K.clear_session()
         del history
         del model
         gc.collect()
@@ -193,6 +198,6 @@ if __name__ == "__main__":
         std = np.std([fold['score'] for i, fold in training_history.items()])
         results.write("Average test loss: {0:0.4f} ({1:0.4f}) MSE\n".format(mean, std))
         results.write("\n--- NETWORK ARCHITECTURE ---\n")
-        model.summary(print_fn=lambda x: results.write(x + '\n'))
+        saved_model.summary(print_fn=lambda x: results.write(x + '\n'))
 
     pickle.dump(training_history, open(os.path.join("reports", "{0}--{1}".format(date, time), "training_history.pkl"), "wb"), protocol=2)
