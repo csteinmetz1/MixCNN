@@ -30,13 +30,14 @@ def get_date_and_time():
 def load_data(spect_type='mel', spect_size='sm'):
 
     key = "{0} {1}".format(spect_type, spect_size)
+    size = 323 # length of input to analyze
 
     y_rows = []
     x_rows = []
     for idx, song in enumerate(glob.glob("data/*.pkl")):
         row = pickle.load(open(song, "rb"))
         y_rows.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
-        x_rows.append(np.dstack((row['bass ' + key], row['drums ' + key], row['other ' + key], row['vocals ' + key])))
+        x_rows.append(np.dstack((row['bass ' + key][:, :size], row['drums ' + key][:, :size], row['other ' + key][:, :size], row['vocals ' + key][:, :size])))
 
     # transform into numpy arrays
     Y = np.array([row for row in y_rows])
@@ -97,7 +98,7 @@ def build_model_larger(input_shape, summary=False):
 
 def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True, save_weights=False):
 
-    batch_size = 1
+    batch_size = 10
     epochs = 100
 
     # checkpoint to save weights
