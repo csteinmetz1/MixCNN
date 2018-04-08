@@ -153,17 +153,28 @@ if __name__ == "__main__":
 
     # get the start date and time and format it
     date, time = get_date_and_time()
+    start_days = date.split('-')[2]
+    start_hrs = time.split('-')[0]
+    start_mins = time.split('-')[1]
 
     training_history = {}
     for i, (train_index, test_index) in enumerate(kf.split(X)):
         print("Running fold", i+1, "of", n_folds)
         model = None # clear the model
+        K.clear_session() 
         model = build_model_larger(input_shape)
         history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
         training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
 
     # get the end date and time and format it
     end_date, end_time = get_date_and_time()
+    end_days = end_date.split('-')[2]
+    end_hrs = end_time.split('-')[0]
+    end_mins = end_time.split('-')[1]
+    
+    elp_days = int(end_days) - int(start_days)
+    elp_hrs = int(end_hrs) - int(start_hrs)
+    elp_mins = int(end_mins) - int(start_mins)
 
     if not os.path.isdir(os.path.join("reports", "{0}--{1}".format(date, time))):
         os.makedirs(os.path.join("reports", "{0}--{1}".format(date, time)))
@@ -172,7 +183,8 @@ if __name__ == "__main__":
     with open(os.path.join("reports", "{0}--{1}".format(date, time), "report_summary.txt"), 'w') as results:
         results.write("--- RUNTIME ---\n")
         results.write("Start time: {0} at {1}\n".format(date, time))
-        results.write("End time:   {0} at {1}\n\n".format(end_date, end_time))
+        results.write("End time:   {0} at {1}\n".format(end_date, end_time))
+        results.write("Runtime:    {0:d} days {0:d} hrs {1:d} mins\n\n".format(elp_days, elp_hrs, elp_mins))
         results.write("--- MSE RESULTS ---\n")
         for i, stats in training_history.items():
             results.write("For fold {0:d} - Test loss: {1:0.4f} MSE\n".format(i+1, stats['score']))
