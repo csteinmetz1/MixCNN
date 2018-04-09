@@ -38,12 +38,16 @@ def load_data(spect_type='mel', spect_size='sm'):
     x_rows = []
     for idx, song in enumerate(glob.glob("data/*.pkl")):
         row = pickle.load(open(song, "rb"))
-        y_rows.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
-        bass_spect = row['bass ' + key][:, :size]
-        drums_spect = row['drums ' + key][:, :size]
-        other_spect = row['other ' + key][:, :size]
-        vocals_spect = row['vocals ' + key][:, :size]
-        x_rows.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+        n_frames = np.floor((row['bass ' + key].shape[1])/size).astype('int')
+        for frame in range(n_frames):
+            y_rows.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+            start_idx = frame*size
+            end_idx = start_idx+size
+            bass_spect = row['bass ' + key][:, start_idx:end_idx]
+            drums_spect = row['drums ' + key][:, start_idx:end_idx]
+            other_spect = row['other ' + key][:, start_idx:end_idx]
+            vocals_spect = row['vocals ' + key][:, start_idx:end_idx]
+            x_rows.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
 
     # transform into numpy arrays
     Y = np.array([row for row in y_rows])
@@ -139,7 +143,7 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, ep
 if __name__ == "__main__":
 
     batch_size = 100
-    epochs = 10
+    epochs = 100
     lr = 0.001
     train = 'single'
     n_folds = 2
