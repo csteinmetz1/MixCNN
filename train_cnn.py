@@ -11,6 +11,8 @@ from keras import optimizers
 from keras.constraints import maxnorm
 from sklearn.model_selection import KFold
 from datetime import datetime
+from sklearn.preprocessing import StandardScaler
+from sklearn import preprocessing
 import os
 import gc
 import glob
@@ -37,11 +39,19 @@ def load_data(spect_type='mel', spect_size='sm'):
     for idx, song in enumerate(glob.glob("data/*.pkl")):
         row = pickle.load(open(song, "rb"))
         y_rows.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
-        x_rows.append(np.dstack((row['bass ' + key][:, :size], row['drums ' + key][:, :size], row['other ' + key][:, :size], row['vocals ' + key][:, :size])))
+        bass_spect = row['bass ' + key][:, :size]
+        drums_spect = row['drums ' + key][:, :size]
+        other_spect = row['other ' + key][:, :size]
+        vocals_spect = row['vocals ' + key][:, :size]
+        x_rows.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
 
     # transform into numpy arrays
     Y = np.array([row for row in y_rows])
     X = np.array([row for row in x_rows])
+
+    # standardize inputs
+    X -= np.mean(X, axis = 0) # zero-center
+    X /= np.std(X, axis = 0) # normalize
 
     input_shape = (X.shape[1], X.shape[2], 4) # four instruments - 1 per channel
 
