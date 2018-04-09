@@ -32,7 +32,7 @@ def get_date_and_time():
 def load_data(spect_type='mel', spect_size='sm'):
 
     key = "{0} {1}".format(spect_type, spect_size)
-    size = 323 # length of input to analyze
+    size = 128 # length of input to analyze
 
     y_rows = []
     x_rows = []
@@ -77,39 +77,36 @@ def build_model(input_shape, summary=False):
 
     return model
 
-def build_model_larger(input_shape, summary=False):
+def build_model_larger(input_shape, lr, summary=False):
     model = Sequential()
     model.add(Conv2D(32, (3, 3), input_shape=input_shape, activation='relu', padding='same'))
-    model.add(Dropout(0.1))
+    model.add(Dropout(0.5))
     model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
-    model.add(Dropout(0.1))
+    model.add(Dropout(0.5))
     model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
-    model.add(Dropout(0.1))
+    model.add(Dropout(0.5))
     model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
     model.add(Dropout(0.1))
-    model.add(Dense(512, activation='relu'))
-    model.add(Dropout(0.1))
     model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.1))
+    model.add(Dropout(0.5))
+    model.add(Dense(32, activation='relu'))
+    model.add(Dropout(0.5))
     model.add(Dense(3))
 
-    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam())
+    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam(lr=lr))
 
     if summary:
         model.summary()
 
     return model
 
-def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True, save_weights=False):
-
-    batch_size = 10
-    epochs = 100
+def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs, show_pred=True, save_weights=False):
 
     # checkpoint to save weights
     filepath='checkpoints/checkpoint-{epoch:02d}-{loss:.4f}.hdf5'
@@ -140,12 +137,15 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, show_pred=True
     return history, score
 
 if __name__ == "__main__":
-    train = 'k fold'
+
+    batch_size = 100
+    epochs = 10
+    lr = 0.001
+    train = 'single'
     n_folds = 2
     spect_type = 'mel'
     spect_size = 'sm'
     X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size)
-    kf = KFold(n_splits=n_folds)
 
     # get the start date and time and format it
     date, time = get_date_and_time()
@@ -157,10 +157,12 @@ if __name__ == "__main__":
     saved_model = None
 
     if train == 'k fold':
+        kf = KFold(n_splits=n_folds)
+        split = int(X.shape[0] - X.shape[0]/n_folds)
         for i, (train_index, test_index) in enumerate(kf.split(X)):
             print("Running fold", i+1, "of", n_folds)
-            model = build_model(input_shape)
-            history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index])
+            model = build_model_larger(input_shape, lr)
+            history, score = train_and_eval_model(model, X[train_index], Y[train_index], X[test_index], Y[test_index], batch_size, epochs)
             training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
             if i == 0:
                 saved_model = model
@@ -169,10 +171,10 @@ if __name__ == "__main__":
             del model
             gc.collect()
     if train == 'single':
-        split = int(np.floor(X.shape[0]*0.8))
-        model = build_model(input_shape)
+        split = int(np.floor(X.shape[0]*0.99))
+        model = build_model_larger(input_shape, lr)
         print(X[:split, :].shape, Y[:split, :].shape, X[split:, :].shape, Y[split:, :].shape)
-        history, score = train_and_eval_model(model, X[:split, :], Y[:split, :], X[split:, :], Y[split:, :])
+        history, score = train_and_eval_model(model, X[:split, :], Y[:split, :], X[split:, :], Y[split:, :], batch_size, epochs)
         training_history[0] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
         saved_model = model
         K.clear_session()
@@ -186,9 +188,8 @@ if __name__ == "__main__":
     end_hrs = end_time.split('-')[0]
     end_mins = end_time.split('-')[1]
     
-    elp_days = int(end_days) - int(start_days)
-    elp_hrs = int(end_hrs) - int(start_hrs)
-    elp_mins = int(end_mins) - int(start_mins)
+    elp_hrs = np.abs(int(end_hrs) - int(start_hrs))
+    elp_mins = np.abs(int(end_mins) - int(start_mins))
 
     if not os.path.isdir(os.path.join("reports", "{0}--{1}".format(date, time))):
         os.makedirs(os.path.join("reports", "{0}--{1}".format(date, time)))
@@ -198,17 +199,24 @@ if __name__ == "__main__":
         results.write("--- RUNTIME ---\n")
         results.write("Start time: {0} at {1}\n".format(date, time))
         results.write("End time:   {0} at {1}\n".format(end_date, end_time))
-        results.write("Runtime:    {0:d} days {1:d} hrs {2:d} mins\n\n".format(elp_days, elp_hrs, elp_mins))
+        results.write("Runtime:    {0:d} hrs {1:d} mins\n\n".format(elp_hrs, elp_mins))
         results.write("--- MSE RESULTS ---\n")
         for i, stats in training_history.items():
             results.write("For fold {0:d} - Test loss: {1:0.4f} MSE\n".format(i+1, stats['score']))
         mean = np.mean([fold['score'] for i, fold in training_history.items()])
         std = np.std([fold['score'] for i, fold in training_history.items()])
-        results.write("Average test loss: {0:0.4f} ({1:0.4f}) MSE\n".format(mean, std))
+        results.write("Average test loss: {0:0.4f} ({1:0.4f}) MSE\n\n".format(mean, std))
+        results.write("--- TRAINING DETAILS ---\n")
+        results.write("Batch size:  {0}\n".format(batch_size))
+        results.write("Epochs:      {0}\n".format(epochs))
+        results.write("Input shape: {0}\n".format(input_shape))
+        results.write("Training type:  {0}\n".format(train))
+        results.write("Folds:          {0:d}\n".format(n_folds))
+        results.write("Training split: {0:d}/{1:d}\n".format(split, X.shape[0]-split))
+        results.write("Learning rate:  {0:f}\n".format(lr))
+        results.write("Spectrogram type: {0}\n".format(spect_type))
+        results.write("Spectrogram size: {0}\n".format(spect_size))
         results.write("\n--- NETWORK ARCHITECTURE ---\n")
         saved_model.summary(print_fn=lambda x: results.write(x + '\n'))
-        results.write("--- TRAINING DETAILS ---\n")
-        results.write("Spectrogram type: {0}".format(spect_type))
-        results.write("Spectrogram size: {0}".format(spect_size))
 
     pickle.dump(training_history, open(os.path.join("reports", "{0}--{1}".format(date, time), "training_history.pkl"), "wb"), protocol=2)
