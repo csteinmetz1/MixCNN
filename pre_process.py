@@ -56,14 +56,6 @@ def spectral_analysis(save_data=True, save_img=False):
 
     level_analysis = pd.read_csv("level_analysis.csv")
 
-    # sort out train and test data
-    y_train_rows = level_analysis.loc[level_analysis['type'] == 'Dev']
-    y_test_rows = level_analysis.loc[level_analysis['type'] == 'Test']
-
-    # crate array of length 3 - exclude the bass loudness ratio
-    y_train = np.array([np.array([row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_train_rows.iterrows()])
-    y_test = np.array([np.array([row[1]['drums ratio'], row[1]['other ratio'], row[1]['vocals ratio']]) for row in y_test_rows.iterrows()])
-
     for idx, song in enumerate(glob.glob("DSD100/Sources/**/*")):
         track_id = song.split('/')[len(song.split('/'))-1][0:3]
         track_type = song.split('/')[len(song.split('/'))-2]
@@ -134,6 +126,8 @@ def spectral_analysis(save_data=True, save_img=False):
             sys.stdout.flush()
 
         # save ordereddict to pickle
+        if not os.path.isdir("data"):
+            os.makedirs("data")
         pickle.dump(database, open(os.path.join("data", "spectral_analysis_{0}.pkl".format(track_id)), "wb"), protocol=2)
         sys.stdout.write("Spectral analysis complete for track {0}             \n".format(track_id)) 
 
