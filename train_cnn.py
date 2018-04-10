@@ -29,7 +29,7 @@ def get_date_and_time():
     time = ('-').join(date_and_time[1].split(':')[0:2])
     return date, time
 
-def load_data(spect_type='mel', spect_size='sm', framing=False):
+def load_data(spect_type='mel', spect_size='sm', framing=False, shuffle=True):
 
     key = "{0} {1}".format(spect_type, spect_size)
     size = 128 # length of input to analyze
@@ -67,6 +67,13 @@ def load_data(spect_type='mel', spect_size='sm', framing=False):
     # standardize inputs
     X -= np.mean(X, axis = 0) # zero-center
     X /= np.std(X, axis = 0) # normalize
+
+    if shuffle:
+        np.random.seed(42)
+        state = np.random.get_state()
+        np.random.shuffle(X)
+        np.random.set_state(state)
+        np.random.shuffle(Y)
 
     input_shape = (X.shape[1], X.shape[2], 4) # four instruments - 1 per channel
 
