@@ -29,24 +29,35 @@ def get_date_and_time():
     time = ('-').join(date_and_time[1].split(':')[0:2])
     return date, time
 
-def load_data(spect_type='mel', spect_size='sm'):
+def load_data(spect_type='mel', spect_size='sm', framing=False):
 
     key = "{0} {1}".format(spect_type, spect_size)
     size = 128 # length of input to analyze
 
     y_rows = []
     x_rows = []
-    for idx, song in enumerate(glob.glob("data/*.pkl")):
-        row = pickle.load(open(song, "rb"))
-        n_frames = np.floor((row['bass ' + key].shape[1])/size).astype('int')
-        for frame in range(n_frames):
+
+    if framing:
+        for idx, song in enumerate(glob.glob("data/*.pkl")):
+            row = pickle.load(open(song, "rb"))
+            n_frames = np.floor((row['bass ' + key].shape[1])/size).astype('int')
+            for frame in range(n_frames):
+                y_rows.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+                start_idx = frame*size
+                end_idx = start_idx+size
+                bass_spect = row['bass ' + key][:, start_idx:end_idx]
+                drums_spect = row['drums ' + key][:, start_idx:end_idx]
+                other_spect = row['other ' + key][:, start_idx:end_idx]
+                vocals_spect = row['vocals ' + key][:, start_idx:end_idx]
+                x_rows.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+    else:
+        for idx, song in enumerate(glob.glob("data/*.pkl")):
+            row = pickle.load(open(song, "rb"))
             y_rows.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
-            start_idx = frame*size
-            end_idx = start_idx+size
-            bass_spect = row['bass ' + key][:, start_idx:end_idx]
-            drums_spect = row['drums ' + key][:, start_idx:end_idx]
-            other_spect = row['other ' + key][:, start_idx:end_idx]
-            vocals_spect = row['vocals ' + key][:, start_idx:end_idx]
+            bass_spect = row['bass ' + key][:, :size]
+            drums_spect = row['drums ' + key][:, :size]
+            other_spect = row['other ' + key][:, :size]
+            vocals_spect = row['vocals ' + key][:, :size]
             x_rows.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
 
     # transform into numpy arrays
@@ -144,7 +155,7 @@ if __name__ == "__main__":
 
     batch_size = 100
     epochs = 100
-    lr = 0.001
+    lr = 0.00001
     train = 'single'
     n_folds = 2
     spect_type = 'mel'
@@ -175,7 +186,7 @@ if __name__ == "__main__":
             del model
             gc.collect()
     if train == 'single':
-        split = int(np.floor(X.shape[0]*0.99))
+        split = int(np.floor(X.shape[0]*0.80))
         model = build_model_larger(input_shape, lr)
         print(X[:split, :].shape, Y[:split, :].shape, X[split:, :].shape, Y[split:, :].shape)
         history, score = train_and_eval_model(model, X[:split, :], Y[:split, :], X[split:, :], Y[split:, :], batch_size, epochs)
