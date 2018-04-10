@@ -18,7 +18,7 @@ def analyze(filepath):
 	date_and_time = filepath.split('/')[len(filepath.split('/'))-2]
 
 	# create training loss plot - over all epochs
-	fig1 = plt.figure()
+	plt.figure(1)
 	for i, fold in training_history.items():
 		loss = fold['loss']
 		val_loss = fold['val_loss']
@@ -26,40 +26,55 @@ def analyze(filepath):
 		n_epochs = len(loss)
 
 		t = np.arange(1, n_epochs+1)
-		ax1 = fig1.add_subplot(2, 1, 1)
-		ax1.plot(t, loss, linewidth=1.0)
-		ax1.set_ylabel('Training Loss (MSE)')
-		ax1.set_title('Training Loss (MSE)')
+		plt.plot(t, loss, linewidth=0.5, color='#d73c49')
+		plt.plot(t, val_loss, linewidth=0.5, color='#417e90')
+		plt.ylabel('Training Loss (MSE)')
+		plt.title('Training Loss (MSE)')
+		plt.xlabel('Epoch')
 
-		ax2 = fig1.add_subplot(2, 1, 2)
-		ax2.plot(t, val_loss, linewidth=1.0)
-		ax2.set_xlabel('Epoch')
-		ax2.set_ylabel('Validation Loss (MSE)')
-
-	fig1.savefig(os.path.join("reports", date_and_time, "train_and_val_loss_summary.png"))
+	plt.savefig(os.path.join("reports", date_and_time, "train_and_val_loss_summary.png"))
+	plt.close('all')
 
 	# create training loss plot - over ending epochs
-	fig2 = plt.figure()
+	plt.figure(1)
 	for i, fold in training_history.items():
 		loss = fold['loss']
 		val_loss = fold['val_loss']
 
 		n_epochs = len(loss)
-		start = n_epochs-(int(np.floor(0.5*n_epochs)))
+		start = n_epochs-(int(np.floor(0.1*n_epochs)))
 		end = n_epochs
 
 		t = np.arange(start, end)
-		ax1 = fig2.add_subplot(2, 1, 1)
-		ax1.plot(t, loss[start:end], linewidth=0.5)
-		ax1.set_ylabel('Training Loss (MSE)')
-		ax1.set_title('Training Loss (MSE)')
+		plt.plot(t, loss[start:end], label='loss', linewidth=0.5, color='#d73c49')
+		plt.plot(t, val_loss[start:end], label='val loss', linewidth=0.5, color='#417e90')
+		plt.ylabel('Training Loss (MSE)')
+		plt.title('Training Loss (MSE)')
+		plt.legend(loc=4, borderaxespad=0.)
 
-		ax2 = fig2.add_subplot(2, 1, 2)
-		ax2.plot(t, val_loss[start:end], linewidth=0.5)
-		ax2.set_xlabel('Epoch')
-		ax2.set_ylabel('Validation Loss (MSE)')
+	plt.savefig(os.path.join("reports", date_and_time, "train_and_val_loss_end_epochs_summary.png"))
+	plt.close('all')
 
-	fig2.savefig(os.path.join("reports", date_and_time, "train_and_val_loss_end_epochs_summary.png"))
+	# create training loss plot with narrow y limits
+	plt.figure(1)
+	for i, fold in training_history.items():
+		loss = fold['loss']
+		val_loss = fold['val_loss']
+
+		n_epochs = len(loss)
+		start = 1
+		end = n_epochs
+
+		t = np.arange(start, end)
+		plt.plot(t, loss[start:end], label='loss', linewidth=0.5, color='#d73c49')
+		plt.plot(t, val_loss[start:end], label='val loss', linewidth=0.5, color='#417e90')
+		plt.ylabel('Training Loss (MSE)')
+		plt.title('Training Loss (MSE)')
+		plt.ylim([0, 0.1])
+		plt.legend(loc=4, borderaxespad=0.)
+
+	plt.savefig(os.path.join("reports", date_and_time, "detailed_loss.png"))
+	plt.close('all')
 
 	# create training loss plots over ending epochs for each fold
 	if not os.path.isdir(os.path.join("reports", date_and_time, "all_folds")):
