@@ -74,6 +74,14 @@ def spectral_analysis(save_data=True, save_img=False):
                                     'drums ratio' : drums_ratio,
                                     'other ratio' : other_ratio,
                                     'vocals ratio' : vocals_ratio,
+                                    'bass mel u' : [],
+                                    'drums mel u' : [],
+                                    'other mel u' : [],
+                                    'vocals mel u' : [],
+                                    'bass mel tn' : [],
+                                    'drums mel tn' : [],
+                                    'other mel tn' : [],
+                                    'vocals mel tn' : [],
                                     'bass mel sm' : [],
                                     'drums mel sm' : [],
                                     'other mel sm' : [],
@@ -96,18 +104,26 @@ def spectral_analysis(save_data=True, save_img=False):
             y, sr = librosa.load(stem, sr=44100, mono=True)
             y = librosa.util.fix_length(y, sr*180)
             y_22k = librosa.resample(y, sr, 22050)
+            mel_u = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=16384, hop_length=8192, n_mels=128)
+            mel_tn = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=8192, hop_length=4096, n_mels=128)
             mel_sm = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=4096, hop_length=2048, n_mels=128)
             mel_lg = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=2048, hop_length=1024, n_mels=128)
+            mfcc_u = librosa.feature.mfcc(S=librosa.power_to_db(mel_u), n_mfcc=20)
+            mfcc_tn = librosa.feature.mfcc(S=librosa.power_to_db(mel_tn), n_mfcc=20)
             mfcc_sm = librosa.feature.mfcc(S=librosa.power_to_db(mel_sm), n_mfcc=20)
             mfcc_lg = librosa.feature.mfcc(S=librosa.power_to_db(mel_lg), n_mfcc=20)
+            database[stem_class + ' mel u'] = np.nan_to_num(mel_u)
+            database[stem_class + ' mel tn'] = np.nan_to_num(mel_tn)
             database[stem_class + ' mel sm'] = mel_sm
             database[stem_class + ' mel lg'] = mel_lg
+            database[stem_class + ' mfcc u'] = mfcc_u
+            database[stem_class + ' mfcc tn'] = mfcc_tn
             database[stem_class + ' mfcc sm'] = mfcc_sm
             database[stem_class + ' mfcc lg'] = mfcc_lg
 
             if save_img:
                 plt.figure(figsize=(10, 4))
-                librosa.display.specshow(librosa.power_to_db(mel_sm, ref=np.max), y_axis='mel', x_axis='time')
+                librosa.display.specshow(librosa.power_to_db(mel_u, ref=np.max), y_axis='mel', x_axis='time')
                 plt.colorbar(format='%+2.0f dB')
                 plt.title('Mel spectrogram of normalized ' + stem_class)
                 plt.tight_layout()
@@ -132,4 +148,4 @@ def spectral_analysis(save_data=True, save_img=False):
         sys.stdout.write("Spectral analysis complete for track {0}             \n".format(track_id)) 
 
 #level_analysis()
-spectral_analysis()
+spectral_analysis(save_img=True)
