@@ -38,18 +38,31 @@ def load_data(spect_type='mel', spect_size='sm', framing=False, shuffle=True):
     x_rows = []
 
     if framing:
+        lim = -30
+        discarded = 0
         for idx, song in enumerate(glob.glob("data/*.pkl")):
             row = pickle.load(open(song, "rb"))
             n_frames = np.floor((row['bass ' + key].shape[1])/size).astype('int')
             for frame in range(n_frames):
-                y_rows.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
                 start_idx = frame*size
                 end_idx = start_idx+size
+
                 bass_spect = row['bass ' + key][:, start_idx:end_idx]
                 drums_spect = row['drums ' + key][:, start_idx:end_idx]
                 other_spect = row['other ' + key][:, start_idx:end_idx]
                 vocals_spect = row['vocals ' + key][:, start_idx:end_idx]
-                x_rows.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+
+                b_mean = np.mean(bass_spect, axis=(0,1))
+                d_mean = np.mean(drums_spect, axis=(0,1))
+                o_mean = np.mean(other_spect, axis=(0,1))
+                v_mean = np.mean(vocals_spect, axis=(0,1))
+
+                if b_mean > lim and b_mean > lim and o_mean > lim and v_mean > lim:
+                    x_rows.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+                    y_rows.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+                else:
+                    discarded += 1
+        print("Discarded {0:d} frames with energy below the threshold.".format(discarded))
     else:
         for idx, song in enumerate(glob.glob("data/*.pkl")):
             row = pickle.load(open(song, "rb"))
