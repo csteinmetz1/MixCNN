@@ -32,7 +32,7 @@ def get_date_and_time():
 def load_data(spect_type='mel', spect_size='sm', framing=False, shuffle=True):
 
     key = "{0} {1}".format(spect_type, spect_size)
-    size = 128 # length of input to analyze
+    size = 20 # length of input to analyze
 
     y_rows = []
     x_rows = []
@@ -63,6 +63,9 @@ def load_data(spect_type='mel', spect_size='sm', framing=False, shuffle=True):
     # transform into numpy arrays
     Y = np.array([row for row in y_rows])
     X = np.array([row for row in x_rows])
+
+    # remove nans
+    X = np.nan_to_num(X)
 
     # standardize inputs
     X -= np.mean(X, axis = 0) # zero-center
@@ -119,7 +122,36 @@ def build_model_larger(input_shape, lr, summary=False):
     model.add(Dropout(0.5))
     model.add(Dense(32, activation='relu'))
     model.add(Dropout(0.5))
-    model.add(Dense(3))
+    model.add(Dense(3, activation='linear'))
+
+    model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam(lr=lr))
+
+    if summary:
+        model.summary()
+
+    return model
+
+def build_model_biggest(input_shape, lr, summary=False):
+    model = Sequential()
+    model.add(Conv2D(32, (3, 3), input_shape=input_shape, activation='relu', padding='same'))
+    #model.add(Dropout(0.2))
+    model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
+    #model.add(Dropout(0.2))
+    model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
+    #model.add(Dropout(0.2))
+    model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Flatten())
+    #model.add(Dropout(0.2))
+    model.add(Dense(1024, activation='relu'))
+    #model.add(Dropout(0.2))
+    model.add(Dense(256, activation='relu'))
+    #model.add(Dropout(0.2))
+    model.add(Dense(3, activation='linear'))
 
     model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam(lr=lr))
 
@@ -160,14 +192,14 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, ep
 
 if __name__ == "__main__":
 
-    batch_size = 100
+    batch_size = 1000
     epochs = 100
-    lr = 0.00001
+    lr = 0.001
     train = 'single'
-    n_folds = 2
-    spect_type = 'mel'
-    spect_size = 'sm'
-    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size)
+    n_folds = 0
+    spect_type = 'mfcc'
+    spect_size = 'lg'
+    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, framing=True)
 
     # get the start date and time and format it
     date, time = get_date_and_time()
@@ -194,7 +226,7 @@ if __name__ == "__main__":
             gc.collect()
     if train == 'single':
         split = int(np.floor(X.shape[0]*0.80))
-        model = build_model_larger(input_shape, lr)
+        model = build_model_biggest(input_shape, lr)
         print(X[:split, :].shape, Y[:split, :].shape, X[split:, :].shape, Y[split:, :].shape)
         history, score = train_and_eval_model(model, X[:split, :], Y[:split, :], X[split:, :], Y[split:, :], batch_size, epochs)
         training_history[0] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
