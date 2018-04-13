@@ -102,26 +102,30 @@ def build_model(input_shape, summary=False):
 
     return model
 
-def build_model_larger(input_shape, lr, summary=False):
+def build_model_exp(input_shape, lr, summary=False):
     model = Sequential()
     model.add(Conv2D(32, (3, 3), input_shape=input_shape, activation='relu', padding='same'))
-    model.add(Dropout(0.5))
+    #model.add(Dropout(0.2))
     model.add(Conv2D(32, (3, 3), activation='relu', padding='same'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
-    model.add(Dropout(0.5))
+    #model.add(Dropout(0.2))
     model.add(Conv2D(64, (3, 3), activation='relu', padding='same'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
-    model.add(Dropout(0.5))
+    #model.add(Dropout(0.2))
     model.add(Conv2D(128, (3, 3), activation='relu', padding='same'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(256, (3, 3), activation='relu', padding='same'))
+    #model.add(Dropout(0.2))
+    model.add(Conv2D(256, (3, 3), activation='relu', padding='same'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
-    model.add(Dropout(0.1))
-    model.add(Dense(128, activation='relu'))
-    model.add(Dropout(0.5))
-    model.add(Dense(32, activation='relu'))
-    model.add(Dropout(0.5))
+    #model.add(Dropout(0.2))
+    model.add(Dense(2056, activation='relu'))
+    #model.add(Dropout(0.2))
+    model.add(Dense(512, activation='relu'))
+    #model.add(Dropout(0.2))
     model.add(Dense(3, activation='linear'))
 
     model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam(lr=lr))
@@ -147,9 +151,9 @@ def build_model_biggest(input_shape, lr, summary=False):
     model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Flatten())
     #model.add(Dropout(0.2))
-    model.add(Dense(1024, activation='relu'))
+    model.add(Dense(2056, activation='relu'))
     #model.add(Dropout(0.2))
-    model.add(Dense(256, activation='relu'))
+    model.add(Dense(512, activation='relu'))
     #model.add(Dropout(0.2))
     model.add(Dense(3, activation='linear'))
 
@@ -226,9 +230,10 @@ if __name__ == "__main__":
             gc.collect()
     if train == 'single':
         split = int(np.floor(X.shape[0]*0.80))
-        model = build_model_biggest(input_shape, lr)
+        model = build_model_exp(input_shape, lr)
         print(X[:split, :].shape, Y[:split, :].shape, X[split:, :].shape, Y[split:, :].shape)
         history, score = train_and_eval_model(model, X[:split, :], Y[:split, :], X[split:, :], Y[split:, :], batch_size, epochs)
+        model.save('final_model_loss_{0:f}.hdf5'.format(score))
         training_history[0] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
         saved_model = model
         K.clear_session()
