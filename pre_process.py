@@ -147,5 +147,5 @@ def spectral_analysis(save_data=True, save_img=False):
         pickle.dump(database, open(os.path.join("data", "spectral_analysis_{0}.pkl".format(track_id)), "wb"), protocol=2)
         sys.stdout.write("Spectral analysis complete for track {0}             \n".format(track_id)) 
 
-#level_analysis()
-spectral_analysis(save_img=True)
+level_analysis()
+spectral_analysis()
