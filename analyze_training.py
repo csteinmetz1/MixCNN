@@ -50,7 +50,7 @@ def analyze(filepath):
 		plt.plot(t, val_loss[start:end], label='val loss', linewidth=0.5, color='#417e90')
 		plt.ylabel('Training Loss (MSE)')
 		plt.title('Training Loss (MSE)')
-		plt.legend(loc=4, borderaxespad=0.)
+		plt.legend(loc=1, borderaxespad=0.)
 
 	plt.savefig(os.path.join("reports", date_and_time, "train_and_val_loss_end_epochs_summary.png"))
 	plt.close('all')
@@ -70,8 +70,8 @@ def analyze(filepath):
 		plt.plot(t, val_loss[start:end], label='val loss', linewidth=0.5, color='#417e90')
 		plt.ylabel('Training Loss (MSE)')
 		plt.title('Training Loss (MSE)')
-		plt.ylim([0, 0.1])
-		plt.legend(loc=4, borderaxespad=0.)
+		plt.ylim([0, 0.01])
+		plt.legend(loc=1, borderaxespad=0.)
 
 	plt.savefig(os.path.join("reports", date_and_time, "detailed_loss.png"))
 	plt.close('all')
@@ -84,24 +84,22 @@ def analyze(filepath):
 		loss = fold['loss']
 		val_loss = fold['val_loss']
 
+		plt.figure(1)
 		n_epochs = len(loss)
-		start = n_epochs-(int(np.floor(0.5*n_epochs)))
+		start = 1
 		end = n_epochs
 
 		t = np.arange(start, end)
-		fig3 = plt.figure()
-		ax1 = fig3.add_subplot(2, 1, 1)
-		ax1.plot(t, loss[start:end], linewidth=0.5)
-		ax1.set_ylabel('Training Loss (MSE)')
-		ax1.set_title('Training Loss (MSE) for Fold {0}'.format(i+1))
+		plt.plot(t, loss[start:end], label='loss', linewidth=0.5, color='#d73c49')
+		plt.plot(t, val_loss[start:end], label='val loss', linewidth=0.5, color='#417e90')
+		plt.ylabel('Training Loss (MSE)')
+		plt.title('Training Loss (MSE)')
+		plt.ylim([0, 0.1])
+		plt.legend(loc=1, borderaxespad=0.)
 
-		ax2 = fig3.add_subplot(2, 1, 2)
-		ax2.plot(t, val_loss[start:end], linewidth=0.5)
-		ax2.set_xlabel('Epoch')
-		ax2.set_ylabel('Validation Loss (MSE)')
-
-		fig3.savefig(os.path.join("reports", date_and_time, "all_folds", "train_and_val_loss_fold{0}_summary.png".format(i+1)))
-
+		plt.savefig(os.path.join("reports", date_and_time, "all_folds", "train_and_val_loss_fold{0}_summary.png".format(i+1)))
+		plt.close('all')
+		
 if __name__ == "__main__":
 	if len(sys.argv) == 2:
 		filepath = sys.argv[1]
