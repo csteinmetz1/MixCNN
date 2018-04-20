@@ -10,11 +10,16 @@ from keras import optimizers
 def build_model_small(input_shape, lr, summary=False):
     model = Sequential()
     model.add(Conv2D(32, kernel_size=(3, 3), activation='relu', input_shape=input_shape))
-    #model.add(Dropout(0.25))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
     model.add(Conv2D(64, (3, 3), activation='relu'))
     model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(128, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Conv2D(128, (3, 3), activation='relu'))
+    model.add(MaxPooling2D(pool_size=(2, 2)))
+    model.add(Dropout(0.5))
     model.add(Flatten())
-    #model.add(Dropout(0.25))
+    model.add(Dense(3, activation='relu'))
     model.add(Dense(3))
 
     model.compile(loss=losses.mean_squared_error, optimizer=optimizers.Adam(lr=lr))
