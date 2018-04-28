@@ -55,7 +55,7 @@ if __name__ == "__main__":
     spect_type = 'mel'
     spect_size = 'u'
     standard = False
-    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, framing=False, window_size=64)
+    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, framing=False, window_size=512)
 
     # get the start date and time and format it
     date, time = get_date_and_time()
