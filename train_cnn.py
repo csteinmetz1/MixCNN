@@ -48,14 +48,14 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, ep
 if __name__ == "__main__":
 
     batch_size = 1000
-    epochs = 10
+    epochs = 300
     lr = 0.001
     train = 'single'
     n_folds = 0
     spect_type = 'mel'
-    spect_size = 'lg'
-    standardize = False
-    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, framing=True, window_size=64)
+    spect_size = 'u'
+    standard = False
+    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, framing=False, window_size=64)
 
     # get the start date and time and format it
     date, time = get_date_and_time()
@@ -99,7 +99,7 @@ if __name__ == "__main__":
         Y_test  = Y[split:, :]
 
         # standardize inputs
-        if standardize:
+        if standard:
             X_train, Y_train, X_test, Y_test = standardize(X_train, Y_train, X_test, Y_test, Y=false)
 
         model = build_model_small(input_shape, lr)
