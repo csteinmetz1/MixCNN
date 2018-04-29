@@ -101,7 +101,7 @@ if __name__ == "__main__":
 
         # standardize inputs
         if standard:
-            X_train, Y_train, X_test, Y_test = standardize(X_train, Y_train, X_test, Y_test, Y=false)
+            X_train, Y_train, X_test, Y_test = standardize(X_train, Y_train, X_test, Y_test, Y=False)
 
         model = build_model_SB(input_shape, lr, summary=True)
         history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)
