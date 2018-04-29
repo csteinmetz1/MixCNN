@@ -47,14 +47,14 @@ def level_analysis():
 
     # create dataframe and save result to csv
     dataframe = pd.DataFrame(database)
-    dataframe.to_csv("level_analysis.csv", sep=',')
+    dataframe.to_csv("data/level_analysis.csv", sep=',')
     print("Saved level data for {0} tracks".format(len(database)))
 
     return database
 
 def spectral_analysis(save_data=True, save_img=False):
 
-    level_analysis = pd.read_csv("level_analysis.csv")
+    level_analysis = pd.read_csv("data/level_analysis.csv")
 
     for idx, song in enumerate(glob.glob("DSD100/Sources/**/*")):
         track_id = song.split('/')[len(song.split('/'))-1][0:3]
@@ -74,52 +74,23 @@ def spectral_analysis(save_data=True, save_img=False):
                                     'drums ratio' : drums_ratio,
                                     'other ratio' : other_ratio,
                                     'vocals ratio' : vocals_ratio,
-                                    'bass mel u' : [],
-                                    'drums mel u' : [],
-                                    'other mel u' : [],
-                                    'vocals mel u' : [],
-                                    'bass mel tn' : [],
-                                    'drums mel tn' : [],
-                                    'other mel tn' : [],
-                                    'vocals mel tn' : [],
-                                    'bass mel sm' : [],
-                                    'drums mel sm' : [],
-                                    'other mel sm' : [],
-                                    'vocals mel sm' : [],
-                                    'bass mel lg' : [],
-                                    'drums mel lg' : [],
-                                    'other mel lg' : [],
-                                    'vocals mel lg' : [],
-                                    'bass mfcc sm' : [],
-                                    'drums mfcc sm' : [],
-                                    'other mfcc sm' : [],
-                                    'vocals mfcc sm' : [],
-                                    'bass mfcc lg' : [],
-                                    'drums mfcc lg' : [],
-                                    'other mfcc lg' : [],
-                                    'vocals mfcc lg' : []}))
+                                    'bass mel 1024 1024' : [],
+                                    'drums mel 1024 1024' : [],
+                                    'other mel 1024 1024' : [],
+                                    'vocals mel 1024 1024' : [],
+                                    'bass mel 1024 512' : [],
+                                    'drums mel 1024 512' : [],
+                                    'other mel 1024 512' : [],
+                                    'vocals mel 1024 512' : []}))
 
         for stem in glob.glob(os.path.join(song, "normalized", "*.wav")):
             stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
             y, sr = librosa.load(stem, sr=44100, mono=True)
             y = librosa.util.fix_length(y, sr*180)
-            y_22k = librosa.resample(y, sr, 22050)
-            mel_u = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=16384, hop_length=8192, n_mels=128)
-            mel_tn = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=8192, hop_length=4096, n_mels=128)
-            mel_sm = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=4096, hop_length=2048, n_mels=128)
-            mel_lg = librosa.feature.melspectrogram(y=y_22k, sr=22050, n_fft=2048, hop_length=1024, n_mels=128)
-            mfcc_u = librosa.feature.mfcc(S=librosa.power_to_db(mel_u), n_mfcc=20)
-            mfcc_tn = librosa.feature.mfcc(S=librosa.power_to_db(mel_tn), n_mfcc=20)
-            mfcc_sm = librosa.feature.mfcc(S=librosa.power_to_db(mel_sm), n_mfcc=20)
-            mfcc_lg = librosa.feature.mfcc(S=librosa.power_to_db(mel_lg), n_mfcc=20)
-            database[stem_class + ' mel u'] = np.nan_to_num(mel_u)
-            database[stem_class + ' mel tn'] = np.nan_to_num(mel_tn)
-            database[stem_class + ' mel sm'] = mel_sm
-            database[stem_class + ' mel lg'] = mel_lg
-            database[stem_class + ' mfcc u'] = mfcc_u
-            database[stem_class + ' mfcc tn'] = mfcc_tn
-            database[stem_class + ' mfcc sm'] = mfcc_sm
-            database[stem_class + ' mfcc lg'] = mfcc_lg
+            mel = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=1024, n_mels=128)
+            mel_hop = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=512, n_mels=128)
+            database[stem_class + ' mel 1024 1024'] = mel
+            database[stem_class + ' mel 1024 512'] = mel_hop
 
             if save_img:
                 plt.figure(figsize=(10, 4))
@@ -147,5 +118,23 @@ def spectral_analysis(save_data=True, save_img=False):
         pickle.dump(database, open(os.path.join("data", "spectral_analysis_{0}.pkl".format(track_id)), "wb"), protocol=2)
         sys.stdout.write("Spectral analysis complete for track {0}             \n".format(track_id)) 
 
-level_analysis()
-spectral_analysis()
+if __name__ == "__main__":
+    if len(sys.argv) == 2:
+        pre_process_type = sys.argv[1]
+        if pre_process_type == '-l':
+            level_analysis()
+        elif pre_process_type == '-s':
+            spectral_analysis()
+        elif pre_process_type == '-a':
+            level_analysis()
+            spectral_analysis()
+        else:
+            print("Usage: python pre_process.py  pre_process_type")
+            print("Valid types: -l, -s, -a")
+            print("-l level analysis \n -s spectral analysis \n -a all")
+            sys.exit(0)
+    else:
+        print("Usage: python pre_process.py  pre_process_type")
+        print("Valid types: -l, -s, -a")
+        print("-l level analysis \n -s spectral analysis \n -a all")
+        sys.exit(0)

@@ -53,9 +53,10 @@ if __name__ == "__main__":
     train = 'single'
     n_folds = 0
     spect_type = 'mel'
-    spect_size = 'lg'
+    spect_size = '1024'
+    hop_size = '1024'
     standard = False
-    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, framing=False, window_size=128)
+    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, hop_size=hop_size, framing=True, window_size=128)
 
     # get the start date and time and format it
     date, time = get_date_and_time()
