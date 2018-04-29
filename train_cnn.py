@@ -53,9 +53,9 @@ if __name__ == "__main__":
     train = 'single'
     n_folds = 0
     spect_type = 'mel'
-    spect_size = 'u'
+    spect_size = 'lg'
     standard = False
-    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, framing=False, window_size=512)
+    X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, framing=False, window_size=128)
 
     # get the start date and time and format it
     date, time = get_date_and_time()
@@ -102,7 +102,7 @@ if __name__ == "__main__":
         if standard:
             X_train, Y_train, X_test, Y_test = standardize(X_train, Y_train, X_test, Y_test, Y=false)
 
-        model = build_model_small(input_shape, lr)
+        model = build_model_SB(input_shape, lr, summary=True)
         history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)
         model.save(os.path.join("reports", "{0}--{1}".format(date, time), 'final_model_loss_{0:f}.hdf5'.format(score)))
         training_history[0] = {'score' : score, 
