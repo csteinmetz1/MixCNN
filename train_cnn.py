@@ -41,7 +41,7 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, ep
     if show_pred:
         pred = model.predict(X_test)
         print("We expect:", Y_test)
-        print("we predict:", pred)
+        print("We predict:", pred)
 
     return history, score
 
@@ -50,8 +50,8 @@ if __name__ == "__main__":
     batch_size = 1000
     epochs = 300
     lr = 0.001
-    train = 'single'
-    n_folds = 0
+    train = 'k fold'
+    n_folds = 10
     spect_type = 'mel'
     spect_size = '1024'
     hop_size = '1024'
@@ -75,14 +75,25 @@ if __name__ == "__main__":
     if train == 'k fold':
         kf = KFold(n_splits=n_folds)
         split = int(X.shape[0] - X.shape[0]/n_folds)
+
         for i, (train_index, test_index) in enumerate(kf.split(X)):
             print("Running fold", i+1, "of", n_folds)
-            model = build_model_larger(input_shape, lr)
-            history, score = train_and_eval_model(model, 
-                                                X[train_index], Y[train_index], 
-                                                X[test_index], Y[test_index], 
-                                                batch_size, epochs)
-            training_history[i] = {'score' : score, 'loss': history.history['loss'], 'val_loss' : history.history['val_loss']}
+
+            # make train / test split
+            X_train = X[train_index]
+            Y_train = Y[train_index]
+            X_test  = X[test_index]
+            Y_test  = Y[test_index]
+
+            # standardize inputs
+            if standard:
+                X_train, Y_train, X_test, Y_test = standardize(X_train, Y_train, X_test, Y_test, Y=False)
+
+            model = build_model_SB(input_shape, lr, summary=True)
+            history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs, show_pred=False)
+            training_history[i] = {'score' : score, 
+                                   'loss': history.history['loss'], 
+                                   'val_loss' : history.history['val_loss']}
             if i == 0:
                 saved_model = model
             K.clear_session()
@@ -146,7 +157,7 @@ if __name__ == "__main__":
         results.write("Learning rate:  {0:f}\n".format(lr))
         results.write("Spectrogram type: {0}\n".format(spect_type))
         results.write("Spectrogram size: {0}\n".format(spect_size))
-        results.write("Standardize: {0}".format(standardize))
+        results.write("Standardize: {0}".format(standard))
         results.write("\n--- NETWORK ARCHITECTURE ---\n")
         saved_model.summary(print_fn=lambda x: results.write(x + '\n'))
 

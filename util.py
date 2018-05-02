@@ -16,7 +16,7 @@ def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True
 
     # set silence thresholds
     if spect_type == 'mel':
-        lim = 0.001
+        lim = 0.0
     if spect_type == 'mfcc':
         lim = -31.0
     
