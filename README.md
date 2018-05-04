@@ -1,5 +1,5 @@
-# MLGAN
-Mulitrack mix leveling with generative adversarial network.
+# MixCNN
+Mulitrack mix leveling with convolutional neural nets.
 
 ## Setup
 
@@ -27,17 +27,17 @@ To generate the input and output data run the `pre_process.py` script.
 
 `$ python pre_process.py`
 
-This will first measure the true mix loudness levels (and loudness ratios) which are saved to a .csv file. 
-Then all of the stems are normalized to -30 LUFS.
-Next spectrograms will be generated of the normalized stems and stored in a pickle file.
+This will first measure the true mix loudness levels (and then calculate loudness ratios w.r.t the bass) which are saved to a .csv file. 
+Then all of the stems are normalized to -24 LUFS.
+Next melspectrograms with frame size 1024 and and hop length of the same size are generated of the normalized stems and stored in a pickle file. 
 
-![bass](img/bass.png)
-![bass](img/drums.png)
-![bass](img/other.png)
-![bass](img/vocals.png)
+During training the melspectrograms of each subgroup is frammed with frame size of 128 (about 3 seconds of audio) and then stacked depth-wise to produce inputs of size 128x128x4. A single stack of TF-patches of length 128 are shown below for a single song in the data
+
+![tf_patches](figures/mel_tf_patch_track_055.png)
 
 ## Train
 
 To train the CNN model run the `train_cnn.py` script.
 
 `$ python train_cnn.py`
+
