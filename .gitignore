@@ -4,6 +4,7 @@ figs/
 reports/
 checkpoints/
 old/
+__pycache__
 
 # files
 .vscode

@@ -46,10 +46,12 @@ def analyze(filepath):
 		end = n_epochs
 
 		t = np.arange(start, end)
-		plt.plot(t, loss[start:end], label='loss', linewidth=0.5, color='#d73c49')
-		plt.plot(t, val_loss[start:end], label='val loss', linewidth=0.5, color='#417e90')
+		plt.plot(t, loss[start:end], label='loss', linewidth=1, color='#d73c49')
+		plt.plot(t, val_loss[start:end], label='val loss', linewidth=1, color='#417e90')
 		plt.ylabel('Training Loss (MSE)')
-		plt.title('Training Loss (MSE)')
+		plt.gca().spines['top'].set_visible(False)
+		plt.gca().spines['right'].set_visible(False)
+		plt.gca().grid(True)
 		plt.legend(loc=1, borderaxespad=0.)
 
 	plt.savefig(os.path.join("reports", date_and_time, "train_and_val_loss_end_epochs_summary.png"))
@@ -69,11 +71,15 @@ def analyze(filepath):
 		plt.plot(t, loss[start:end], label='loss', linewidth=0.5, color='#d73c49')
 		plt.plot(t, val_loss[start:end], label='val loss', linewidth=0.5, color='#417e90')
 		plt.ylabel('Training Loss (MSE)')
-		plt.title('Training Loss (MSE)')
-		plt.ylim([0, 0.01])
+		plt.xlabel('Epoch')
+		plt.gca().spines['top'].set_visible(False)
+		plt.gca().spines['right'].set_visible(False)
+		plt.gca().grid(True)
+		plt.ylim([0, 0.2])
 		plt.legend(loc=1, borderaxespad=0.)
+		plt.tight_layout()
 
-	plt.savefig(os.path.join("reports", date_and_time, "detailed_loss.png"))
+	plt.savefig(os.path.join("reports", date_and_time, "detailed_loss.png"), )
 	plt.close('all')
 
 	# create training loss plots over ending epochs for each fold
