@@ -12,7 +12,7 @@ def get_date_and_time():
 def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True, window_size=128):
 
     key = "{0} {1} {2}".format(spect_type, spect_size, hop_size)
-    key = "mel 1024" # temporary fix
+    #key = "mel 1024" # temporary fix
 
     # set silence thresholds
     if spect_type == 'mel':
