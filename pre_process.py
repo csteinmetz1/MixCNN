@@ -93,20 +93,10 @@ def spectral_analysis(save_data=True, save_img=False):
             database[stem_class + ' mel 1024 512'] = mel_hop
 
             if save_img:
-                plt.figure(figsize=(10, 4))
-                librosa.display.specshow(librosa.power_to_db(mel_u, ref=np.max), y_axis='mel', x_axis='time')
-                plt.colorbar(format='%+2.0f dB')
-                plt.title('Mel spectrogram of normalized ' + stem_class)
+                plt.figure(figsize=(5.5, 5))
+                librosa.display.specshow(librosa.power_to_db(mel[:,128:2*128], ref=np.max), fmax=22050, y_axis='mel', x_axis='time')
                 plt.tight_layout()
                 plt.savefig(os.path.join(song, "img", "mel_" + stem_class + ".png")) 
-
-                plt.figure(figsize=(10, 4))
-                librosa.display.specshow(mfcc_sm, x_axis='time')
-                plt.colorbar()
-                plt.title('MFCC')
-                plt.tight_layout() 
-                plt.savefig(os.path.join(song, "img", "mfcc_" + stem_class + ".png")) 
-
                 plt.close('all')
 
             sys.stdout.write("Saved Mel spectrogram data of track {1} - {0}   \r".format(stem_class, track_id))
