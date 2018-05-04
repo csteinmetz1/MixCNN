@@ -48,7 +48,7 @@ def train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, ep
 if __name__ == "__main__":
 
     batch_size = 1000
-    epochs = 300
+    epochs = 1
     lr = 0.001
     train = 'k fold'
     n_folds = 10
@@ -56,6 +56,7 @@ if __name__ == "__main__":
     spect_size = '1024'
     hop_size = '1024'
     standard = False
+    wichern = True
     X, Y, input_shape = load_data(spect_type=spect_type, spect_size=spect_size, hop_size=hop_size, framing=True, window_size=128)
 
     # get the start date and time and format it
@@ -70,6 +71,7 @@ if __name__ == "__main__":
         os.makedirs(report_dir)
 
     training_history = {}
+    baseline_val_loss = []
     saved_model = None
 
     if train == 'k fold':
@@ -85,9 +87,20 @@ if __name__ == "__main__":
             X_test  = X[test_index]
             Y_test  = Y[test_index]
 
+            # baseline predictions
+            if wichern:
+                bass_ratio = -10.0/-10.0
+                drums_ratio = -10.0/-10.0
+                other_ratio = -10.0/-14.0
+                vocals_ratio = -10.0/-7.0
+
+                Y_hat = np.array([drums_ratio, other_ratio, vocals_ratio])
+
+                baseline_val_loss.append(np.sum([np.square((Y-Y_hat)) for Y in Y_test])/len(Y_test))
+
             # standardize inputs
-            if standard:
-                X_train, Y_train, X_test, Y_test = standardize(X_train, Y_train, X_test, Y_test, Y=False)
+            #if standard:
+            #    X_train, Y_train, X_test, Y_test = standardize(X_train, Y_train, X_test, Y_test, Y=False)
 
             model = build_model_SB(input_shape, lr, summary=True)
             history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs, show_pred=False)
@@ -147,6 +160,12 @@ if __name__ == "__main__":
         mean = np.mean([fold['score'] for i, fold in training_history.items()])
         std = np.std([fold['score'] for i, fold in training_history.items()])
         results.write("Average test loss: {0:0.4f} ({1:0.4f}) MSE\n\n".format(mean, std))
+        if wichern:
+            for i, baseline_loss in enumerate(baseline_val_loss):
+                results.write("For fold {0:d} - Test loss: {1:0.4f} MSE\n".format(i+1, baseline_loss))
+            mean = np.mean([loss for loss in baseline_val_loss])
+            std = np.std([loss for loss in baseline_val_loss])
+        results.write("Average baseline test loss: {0:0.4f} ({1:0.4f}) MSE\n\n".format(mean, std))
         results.write("--- TRAINING DETAILS ---\n")
         results.write("Batch size:  {0}\n".format(batch_size))
         results.write("Epochs:      {0}\n".format(epochs))
