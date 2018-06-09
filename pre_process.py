@@ -9,13 +9,13 @@ import pandas as pd
 import librosa
 import librosa.display
 import matplotlib.pyplot as plt
-import pyloudnorm.util
-import pyloudnorm.loudness
-import pyloudnorm.normalize
+import pyloudnorm
+import soundfile as sf
 
 def level_analysis():
-    # dict to store columns
-    database = []
+    meter = pyloudnorm.loudness.Meter(44100) # create loudness meter
+    target = -24.0 # target loudness
+    database = [] # dict to store columns
     for idx, song in enumerate(glob.glob("DSD100/Sources/**/*")):
         track_id = song.split('/')[len(song.split('/'))-1][0:3]
         track_type = song.split('/')[len(song.split('/'))-2]
@@ -33,17 +33,21 @@ def level_analysis():
                                     'other ratio' : 0,
                                     'vocals ratio' : 0}))
         for stem in glob.glob(os.path.join(song,"*.wav")):
+
             stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
             # read file and measure LUFS
-            rate, data = wavfile.read(stem)
-            data = pyloudnorm.util.validate_input_data(data, rate)
-            stem_loudness = pyloudnorm.loudness.measure_gated_loudness(data, rate)
+            data, rate = sf.read(stem)
+
+            # measure loudness
+            stem_loudness = meter.integrated(data)
+
             # store results
             database[idx][stem_class + ' LUFS'] = stem_loudness
             database[idx][stem_class + ' ratio'] = database[idx]['bass LUFS'] / stem_loudness
-            # normalize stem - NOTE: this currently produces a 32-bit floating point .wav 
-            ln_audio = pyloudnorm.normalize.loudness(data, rate, -24.0)
-            wavfile.write(os.path.join(song, "normalized", stem_class + ".wav"), rate, ln_audio)
+
+            # normalize to target and save .wav
+            norm_data = pyloudnorm.normalize.loudness(data, stem_loudness, target)
+            sf.write(os.path.join(song, "normalized", stem_class + ".wav"), norm_data, rate)
 
     # create dataframe and save result to csv
     dataframe = pd.DataFrame(database)
@@ -86,7 +90,7 @@ def spectral_analysis(save_data=True, save_img=False):
         for stem in glob.glob(os.path.join(song, "normalized", "*.wav")):
             stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
             y, sr = librosa.load(stem, sr=44100, mono=True)
-            y = librosa.util.fix_length(y, sr*180)
+            #y = librosa.util.fix_length(y, sr*180)
             mel = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=1024, n_mels=128)
             mel_hop = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=512, n_mels=128)
             database[stem_class + ' mel 1024 1024'] = mel

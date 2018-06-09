@@ -12,6 +12,5 @@ __pycache__
 *.csv
 *.pkl
 ideas.txt
-
 mix.py
 train_gan.py
