@@ -13,6 +13,7 @@ import pickle
 from util import load_data, standardize, generate_report
 from models import *
 import datetime
+from pyalerts.py_alerts import email_alert
 
 def train_and_eval_model(model, X_train, Y_train, X_val, Y_val, batch_size, epochs, save_weights=False):
 
@@ -45,7 +46,7 @@ if __name__ == "__main__":
 
     # selected hyperparameters
     batch_size = 1000
-    epochs = 10
+    epochs = 100
     lr = 0.001
     spect_type = 'mel'
     spect_size = '1024'
@@ -105,3 +106,10 @@ if __name__ == "__main__":
 
     generate_report(report_dir, report_data)
     pickle.dump(training_history, open(os.path.join(report_dir, "training_history.pkl"), "wb"), protocol=2)
+
+    # email report
+    with open(os.path.join(report_dir, "report_summary.txt"), 'r') as report_fp:
+        report_details = report_fp.read()
+        alert = email_alert()
+        alert.send(subject="MixCNN Train Cycle {0}-{1:0>2}-{2:0>2} {3:0>2}:{4:0>2} [{5:0.4f}]".format(
+            s.year, s.month, s.day, s.hour, s.minute, score), message=report_details)

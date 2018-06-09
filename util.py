@@ -128,7 +128,9 @@ def generate_report(report_dir, r):
         results.write("End time:   {}\n".format(r["end time"]))
         results.write("Runtime:    {}\n\n".format(r["elapsed time"]))
         results.write("--- MSE RESULTS ---\n")
-        results.write("--- TRAINING DETAILS ---\n")
+        for epoch, val_loss in enumerate(r["training history"][0]["val_loss"]):
+            results.write("Epoch {0}: {1:0.6f}\n".format(epoch+1, val_loss))
+        results.write("\n--- TRAINING DETAILS ---\n")
         results.write("Batch size:  {0}\n".format(r["batch size"]))
         results.write("Epochs:      {0}\n".format(r["epochs"]))
         results.write("Input shape: {0}\n".format(r["input shape"]))
