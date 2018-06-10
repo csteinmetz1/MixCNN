@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # load data
     X_train, Y_train, X_val, Y_val, X_test, Y_test, input_shape = load_data(spect_type=spect_type, 
-    spect_size=spect_size, hop_size=hop_size, framing=True, window_size=128)
+    spect_size=spect_size, hop_size=hop_size, framing=True, window_size=512)
 
     # get the start date and time and format it
     s = datetime.datetime.today()

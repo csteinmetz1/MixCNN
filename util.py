@@ -3,6 +3,7 @@ import glob
 import pickle
 import numpy as np
 from datetime import datetime
+from skimage.transform import resize
 
 def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True, window_size=128):
 
@@ -31,6 +32,7 @@ def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True
             row = pickle.load(open(song, "rb"))
             n_frames = np.floor((row['bass ' + key].shape[1])/window_size).astype('int')
             track_id = int(os.path.basename(song).split("_")[2].strip(".pkl"))
+
             for frame in range(n_frames):
                 start_idx = frame*window_size
                 end_idx = start_idx+window_size
@@ -39,6 +41,11 @@ def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True
                 drums_spect = row['drums ' + key][:, start_idx:end_idx]
                 other_spect = row['other ' + key][:, start_idx:end_idx]
                 vocals_spect = row['vocals ' + key][:, start_idx:end_idx]
+
+                bass_spect = resize(bass_spect, (128, 128), anti_aliasing=True)
+                drums_spect = resize(drums_spect, (128, 128), anti_aliasing=True)
+                other_spect = resize(other_spect, (128, 128), anti_aliasing=True)
+                vocals_spect = resize(vocals_spect, (128, 128), anti_aliasing=True)
 
                 b_mean = np.mean(bass_spect, axis=(0,1))
                 d_mean = np.mean(drums_spect, axis=(0,1))
