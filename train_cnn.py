@@ -45,13 +45,13 @@ def train_and_eval_model(model, X_train, Y_train, X_val, Y_val, batch_size, epoc
 if __name__ == "__main__":
 
     # selected hyperparameters
-    batch_size = 1000
+    batch_size = 100
     epochs = 100
     lr = 0.001
     spect_type = 'mel'
     spect_size = '1024'
     hop_size = '1024'
-    standard = False
+    standard = True
 
     # load data
     X_train, Y_train, X_val, Y_val, X_test, Y_test, input_shape = load_data(spect_type=spect_type, 
@@ -71,7 +71,7 @@ if __name__ == "__main__":
 
     # standardize inputs
     if standard:
-        X_train, Y_train, X_test, Y_test = standardize(X_train, Y_train, X_test, Y_test, Y=False)
+        X_train, X_val, X_test = standardize(X_train, X_val, X_test)
 
     model = build_model_SB(input_shape, lr, summary=True)
     history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)

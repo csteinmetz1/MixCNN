@@ -7,7 +7,6 @@ from datetime import datetime
 def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True, window_size=128):
 
     key = "{0} {1} {2}".format(spect_type, spect_size, hop_size)
-    #key = "mel 1024" # temporary fix
 
     train_ids = np.arange(21, 100+1)
     val_ids = np.arange(11, 20+1)
@@ -98,28 +97,21 @@ def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True
 
     return X_train, Y_train, X_val, Y_val, X_test, Y_test, input_shape
 
-def standardize(X_train, Y_train, X_test, Y_test, X=True, Y=True):
-    if X:
-        X_train_mean = np.mean(X_train, axis = 0)
-        X_train_std  = np.std(X_train, axis = 0)
+def standardize(X_train, X_val, X_test):
 
-        X_train -= X_train_mean # zero-center
-        X_train /= X_train_std  # normalize
+    X_train_mean = np.mean(X_train, axis=0)
+    X_train_std  = np.std(X_train, axis=0)
 
-        X_test  -= X_train_mean 
-        X_test  /= X_train_std  
+    X_train -= X_train_mean # zero-center
+    X_train /= X_train_std  # normalize
 
-    if Y:
-        Y_train_mean = np.mean(Y_train, axis = 0)
-        Y_train_std  = np.std(Y_train, axis = 0)
+    X_val -= X_train_mean # zero-center
+    X_val /= X_train_std  # normalize
 
-        Y_train -= Y_train_mean 
-        Y_train /= Y_train_std  
+    X_test -= X_train_mean # zero-center
+    X_test /= X_train_std  # normalize
 
-        Y_test  -= Y_train_mean 
-        Y_test  /= Y_train_std  
-
-    return X_train, Y_train, X_test, Y_test
+    return X_train, X_val, X_test
 
 def generate_report(report_dir, r):
     with open(os.path.join(report_dir, "report_summary.txt"), 'w') as results:
