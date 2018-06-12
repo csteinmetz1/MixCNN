@@ -178,17 +178,29 @@ def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True
 
 def standardize(X_train, X_val, X_test):
 
-    X_train_mean = np.mean(X_train, axis=0)
-    X_train_std  = np.std(X_train, axis=0)
+    #X_train_mean = np.mean(X_train, axis=0)
+    #X_train_std  = np.std(X_train, axis=0)
 
-    X_train -= X_train_mean # zero-center
-    X_train /= X_train_std  # normalize
+    #X_train -= X_train_mean # zero-center
+    #X_train /= X_train_std  # normalize
 
-    X_val -= X_train_mean # zero-center
-    X_val /= X_train_std  # normalize
+    #X_val -= X_train_mean # zero-center
+    #X_val /= X_train_std  # normalize
 
-    X_test -= X_train_mean # zero-center
-    X_test /= X_train_std  # normalize
+    #X_test -= X_train_mean # zero-center
+    #X_test /= X_train_std  # normalize
+
+    X_max = np.max(X_train)
+    X_min = np.min(X_train)
+
+    X_train -= X_min
+    X_train /= (X_max - X_min)
+
+    X_val -= X_min
+    X_val /= (X_max - X_min)
+
+    X_test -= X_min
+    X_test /= (X_max - X_min)
 
     return X_train, X_val, X_test
 
