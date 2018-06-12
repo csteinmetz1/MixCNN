@@ -46,12 +46,15 @@ if __name__ == "__main__":
 
     # selected hyperparameters
     batch_size = 100
-    epochs = 100
+    epochs = 5
     lr = 0.01
     spect_type = 'mel'
     spect_size = '1024'
     hop_size = '1024'
     standard = True
+
+    train = 'k fold'
+    n_folds = 10
 
     # load data
     X_train, Y_train, X_val, Y_val, X_test, Y_test, input_shape = load_data(spect_type=spect_type, 
@@ -73,17 +76,39 @@ if __name__ == "__main__":
     if standard:
         X_train, X_val, X_test = standardize(X_train, X_val, X_test)
 
-    model = build_model_SB(input_shape, lr, summary=False)
-    history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)
-    model.save(os.path.join(report_dir, 'final_model_loss_{0:f}.hdf5'.format(score)))
-    training_history[0] = {'score' : score, 
-                            'loss': history.history['loss'], 
-                            'val_loss' : history.history['val_loss']}
-    saved_model = model
-    K.clear_session()
-    del history
-    del model
-    gc.collect()
+    if train == 'k fold':
+        kf = KFold(n_splits=n_folds)
+        X = np.concatenate((X_train, X_val))
+        Y = np.concatenate((Y_train, Y_val))
+        split = int(X.shape[0] - X.shape[0]/n_folds)
+
+        for i, (train_index, val_index) in enumerate(kf.split(X)):
+            print("Running fold", i+1, "of", n_folds)
+
+            # make train / test split
+            X_train = X[train_index]
+            Y_train = Y[train_index]
+            X_val  = X[val_index]
+            Y_val  = Y[val_index]
+
+            model = build_model_SB(input_shape, lr, summary=False)
+            history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)
+            model.save(os.path.join(report_dir, 'final_model_loss_{0:0.4f}.hdf5'.format(score)))
+            training_history[0] = {'score' : score, 
+                                    'loss': history.history['loss'], 
+                                    'val_loss' : history.history['val_loss']}
+            saved_model = model
+            K.clear_session()
+            del history
+            del model
+            gc.collect()
+    else:
+        model = build_model_SB(input_shape, lr, summary=False)
+        history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)
+        model.save(os.path.join(report_dir, 'final_model_loss_{0:f}.hdf5'.format(score)))
+        training_history[0] = {'score' : score, 
+                                'loss': history.history['loss'], 
+                                'val_loss' : history.history['val_loss']}
 
     # get the end date and time and format it
     e = datetime.datetime.today()
@@ -102,14 +127,16 @@ if __name__ == "__main__":
                    "spect type" : spect_type,
                    "spect size" : spect_size,
                    "standard" : standard,
-                   "model" : saved_model}
+                   "model" : saved_model,
+                   "train" : train,
+                   "folds" : n_folds}
 
     generate_report(report_dir, report_data)
     pickle.dump(training_history, open(os.path.join(report_dir, "training_history.pkl"), "wb"), protocol=2)
 
     # email report
-    #with open(os.path.join(report_dir, "report_summary.txt"), 'r') as report_fp:
-    #    report_details = report_fp.read()
-    #    alert = email_alert()
-    #    alert.send(subject="MixCNN Train Cycle {0}-{1:0>2}-{2:0>2} {3:0>2}:{4:0>2} [{5:0.4f}]".format(
-    #        s.year, s.month, s.day, s.hour, s.minute, score), message=report_details)
+    with open(os.path.join(report_dir, "report_summary.txt"), 'r') as report_fp:
+        report_details = report_fp.read()
+        alert = email_alert()
+        alert.send(subject="MixCNN Train Cycle {0}-{1:0>2}-{2:0>2} {3:0>2}:{4:0>2} [{5:0.4f}]".format(
+            s.year, s.month, s.day, s.hour, s.minute, score), message=report_details)
