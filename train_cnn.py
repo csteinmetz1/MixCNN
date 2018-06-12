@@ -109,6 +109,11 @@ if __name__ == "__main__":
         training_history[0] = {'score' : score, 
                                 'loss': history.history['loss'], 
                                 'val_loss' : history.history['val_loss']}
+        saved_model = model
+        K.clear_session()
+        del history
+        del model
+        gc.collect()
 
     # get the end date and time and format it
     e = datetime.datetime.today()
