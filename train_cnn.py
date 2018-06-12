@@ -47,7 +47,7 @@ if __name__ == "__main__":
     # selected hyperparameters
     batch_size = 100
     epochs = 100
-    lr = 0.001
+    lr = 0.01
     spect_type = 'mel'
     spect_size = '1024'
     hop_size = '1024'
@@ -55,7 +55,7 @@ if __name__ == "__main__":
 
     # load data
     X_train, Y_train, X_val, Y_val, X_test, Y_test, input_shape = load_data(spect_type=spect_type, 
-    spect_size=spect_size, hop_size=hop_size, framing=True, window_size=512)
+    spect_size=spect_size, hop_size=hop_size, framing=True, window_size=128)
 
     # get the start date and time and format it
     s = datetime.datetime.today()
@@ -73,7 +73,7 @@ if __name__ == "__main__":
     if standard:
         X_train, X_val, X_test = standardize(X_train, X_val, X_test)
 
-    model = build_model_SB(input_shape, lr, summary=True)
+    model = build_model_SB(input_shape, lr, summary=False)
     history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)
     model.save(os.path.join(report_dir, 'final_model_loss_{0:f}.hdf5'.format(score)))
     training_history[0] = {'score' : score, 
@@ -108,8 +108,8 @@ if __name__ == "__main__":
     pickle.dump(training_history, open(os.path.join(report_dir, "training_history.pkl"), "wb"), protocol=2)
 
     # email report
-    with open(os.path.join(report_dir, "report_summary.txt"), 'r') as report_fp:
-        report_details = report_fp.read()
-        alert = email_alert()
-        alert.send(subject="MixCNN Train Cycle {0}-{1:0>2}-{2:0>2} {3:0>2}:{4:0>2} [{5:0.4f}]".format(
-            s.year, s.month, s.day, s.hour, s.minute, score), message=report_details)
+    #with open(os.path.join(report_dir, "report_summary.txt"), 'r') as report_fp:
+    #    report_details = report_fp.read()
+    #    alert = email_alert()
+    #    alert.send(subject="MixCNN Train Cycle {0}-{1:0>2}-{2:0>2} {3:0>2}:{4:0>2} [{5:0.4f}]".format(
+    #        s.year, s.month, s.day, s.hour, s.minute, score), message=report_details)

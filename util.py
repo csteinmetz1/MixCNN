@@ -1,11 +1,80 @@
 import os
+import sys
 import glob
 import pickle
 import numpy as np
 from datetime import datetime
 from skimage.transform import resize
 
-def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True, window_size=128):
+def load_song_data(window_size):
+
+    #key = "{0} {1} {2}".format(spect_type, spect_size, hop_size)
+    key = "mel 1024 1024"
+
+    # set data split
+    train_ids = np.arange(21, 100+1)
+    val_ids = np.arange(11, 20+1)
+    test_ids = np.arange(1, 10+1)
+
+    # set silence threshold
+    lim = 1e-6
+    discarded = 0
+    song_data = []
+
+    # load dataset 
+    for idx, song in enumerate(glob.glob("data/*.pkl")):
+
+        # data holders
+        X_train = []
+        Y_train = []
+        X_val = []
+        Y_val = []
+        X_test = []
+        Y_test = []
+        
+        track_id = int(os.path.basename(song).split("_")[2].strip(".pkl"))     
+        
+        # load song data
+        row = pickle.load(open(song, "rb"))
+        n_frames = np.floor((row['bass ' + key].shape[1])/window_size).astype('int')
+
+        for frame in range(n_frames):
+            start_idx = frame*window_size
+            end_idx = start_idx+window_size
+
+            bass_spect = row['bass ' + key][:, start_idx:end_idx]
+            drums_spect = row['drums ' + key][:, start_idx:end_idx]
+            other_spect = row['other ' + key][:, start_idx:end_idx]
+            vocals_spect = row['vocals ' + key][:, start_idx:end_idx]
+
+            b_mean = np.mean(bass_spect, axis=(0,1))
+            d_mean = np.mean(drums_spect, axis=(0,1))
+            o_mean = np.mean(other_spect, axis=(0,1))
+            v_mean = np.mean(vocals_spect, axis=(0,1))
+
+            if b_mean > lim and b_mean > lim and o_mean > lim and v_mean > lim:
+                if   track_id in train_ids:
+                    X_train.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+                    Y_train.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+                elif track_id in val_ids:
+                    X_val.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+                    Y_val.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+                elif track_id in test_ids:
+                    X_test.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+                    Y_test.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+            else:
+                discarded += 1
+
+        song_data.append({"track id" : track_id, 
+                          "X_train" : np.array(X_train), "Y_train" : np.array(Y_train),
+                          "X_val" : np.array(X_val), "Y_val" : np.array(Y_val),
+                          "X_test" : np.array(X_test), "Y_test" : np.array(Y_test)})
+
+    print("\nDiscarded {0:d} frames with energy below the threshold.".format(discarded))
+
+    return song_data
+
+def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True, window_size=128, resizing=False):
 
     key = "{0} {1} {2}".format(spect_type, spect_size, hop_size)
 
@@ -42,10 +111,11 @@ def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True
                 other_spect = row['other ' + key][:, start_idx:end_idx]
                 vocals_spect = row['vocals ' + key][:, start_idx:end_idx]
 
-                bass_spect = resize(bass_spect, (128, 128), anti_aliasing=True)
-                drums_spect = resize(drums_spect, (128, 128), anti_aliasing=True)
-                other_spect = resize(other_spect, (128, 128), anti_aliasing=True)
-                vocals_spect = resize(vocals_spect, (128, 128), anti_aliasing=True)
+                if resizing:
+                    bass_spect = resize(bass_spect, (128, 128), anti_aliasing=True)
+                    drums_spect = resize(drums_spect, (128, 128), anti_aliasing=True)
+                    other_spect = resize(other_spect, (128, 128), anti_aliasing=True)
+                    vocals_spect = resize(vocals_spect, (128, 128), anti_aliasing=True)
 
                 b_mean = np.mean(bass_spect, axis=(0,1))
                 d_mean = np.mean(drums_spect, axis=(0,1))
@@ -64,6 +134,8 @@ def load_data(spect_type='mel', spect_size='1024', hop_size='1024', framing=True
                         y_test.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
                 else:
                     discarded += 1
+                sys.stdout.write("Loaded songs: {:03d}\r".format(idx+1))
+                sys.stdout.flush()
         print("\nDiscarded {0:d} frames with energy below the threshold.".format(discarded))
     else:
         for idx, song in enumerate(glob.glob("data/*.pkl")):
