@@ -3,7 +3,6 @@ import sys
 import os
 from collections import OrderedDict
 import pickle
-import scipy.io.wavfile as wavfile
 import numpy as np
 import pandas as pd
 import librosa
@@ -11,12 +10,61 @@ import librosa.display
 import matplotlib.pyplot as plt
 import pyloudnorm
 import soundfile as sf
+import warnings
+
+def augmentation():
+
+    for idx, song in enumerate(glob.glob("DSD100/Sources/**/*")):
+        track_id = song.split('/')[len(song.split('/'))-1][0:3]
+        track_type = song.split('/')[len(song.split('/'))-2]
+
+        print(song)
+
+        if not os.path.isdir(os.path.join(song, "augmented")):
+            os.makedirs(os.path.join(song, "augmented")) # create new dir to store augmented stems
+
+        for stem in glob.glob(os.path.join(song, "*.wav")):
+            stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
+            y, sr = librosa.load(stem, sr=44100, mono=False)
+            y_left  = y[0,:]
+            y_right = y[1,:]
+
+            for factor in [0.81]: #[0.81, 0.93, 1.07, 1.23]:
+                subdir = "stretch_{}".format(factor)
+                if not os.path.isdir(os.path.join(song, "augmented", subdir)):
+                    os.makedirs(os.path.join(song, "augmented", subdir))
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=FutureWarning)
+                    stretch_left = librosa.effects.time_stretch(y_left, factor)
+                    stretch_right = librosa.effects.time_stretch(y_right, factor)
+                stretch = np.stack((stretch_left, stretch_right), axis=0)
+                #stretch = np.reshape(stretch, (stretch.shape[1], stretch.shape[0]))
+                filename = "{}.wav".format(stem_class)
+                librosa.output.write_wav(os.path.join(song, "augmented", subdir, filename), stretch, sr)
+                sys.stdout.write(" Stretching by {: >4}     \r".format(factor))
+                sys.stdout.flush()
+
+            for semitones in [1]: #[-2, -1, 1, 2]:
+                subdir = "shift_{}".format(semitones)
+                if not os.path.isdir(os.path.join(song, "augmented", subdir)):
+                    os.makedirs(os.path.join(song, "augmented", subdir))
+                with warnings.catch_warnings():
+                    warnings.simplefilter("ignore", category=FutureWarning)
+                    shift_left = librosa.effects.pitch_shift(y_left, sr, n_steps=semitones)
+                    shift_right = librosa.effects.pitch_shift(y_right, sr, n_steps=semitones)
+                shift = np.stack((shift_left, shift_right), axis=0)
+                #shift = np.reshape(shift, (shift.shape[1], shift.shape[0]))
+                filename = "{}.wav".format(stem_class)
+                librosa.output.write_wav(os.path.join(song, "augmented", subdir, filename), shift, sr)
+                sys.stdout.write(" Shifting by {: >2}      \r".format(semitones))
+                sys.stdout.flush()
 
 def level_analysis():
     meter = pyloudnorm.loudness.Meter(44100) # create loudness meter
     target = -24.0 # target loudness
     database = [] # dict to store columns
     for idx, song in enumerate(glob.glob("DSD100/Sources/**/*")):
+        print(song)
         track_id = song.split('/')[len(song.split('/'))-1][0:3]
         track_type = song.split('/')[len(song.split('/'))-2]
         if not os.path.isdir(os.path.join(song, "normalized")):
@@ -61,6 +109,7 @@ def spectral_analysis(save_data=True, save_img=False):
     level_analysis = pd.read_csv("data/level_analysis.csv")
 
     for idx, song in enumerate(glob.glob("DSD100/Sources/**/*")):
+        print(song)
         track_id = song.split('/')[len(song.split('/'))-1][0:3]
         track_type = song.split('/')[len(song.split('/'))-2]
 
@@ -115,20 +164,21 @@ def spectral_analysis(save_data=True, save_img=False):
 if __name__ == "__main__":
     if len(sys.argv) == 2:
         pre_process_type = sys.argv[1]
-        if pre_process_type == '-l':
+        if pre_process_type == '--level':
             level_analysis()
-        elif pre_process_type == '-s':
+        elif pre_process_type == '--spectral':
             spectral_analysis()
-        elif pre_process_type == '-a':
+        elif pre_process_type == '--augment':
+            augmentation()
+        elif pre_process_type == '--all':
             level_analysis()
             spectral_analysis()
+            augmentation()
         else:
             print("Usage: python pre_process.py  pre_process_type")
-            print("Valid types: -l, -s, -a")
-            print("-l level analysis \n -s spectral analysis \n -a all")
+            print("Valid types: --level, --spectral, --augment --all")
             sys.exit(0)
     else:
         print("Usage: python pre_process.py  pre_process_type")
-        print("Valid types: -l, -s, -a")
-        print("-l level analysis \n -s spectral analysis \n -a all")
+        print("Valid types: --level, --spectral, --augment --all")
         sys.exit(0)
