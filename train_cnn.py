@@ -10,7 +10,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
-from util import load_data, standardize, generate_report
+from util import load_data, load_song_data, standardize, generate_report
 from models import *
 import datetime
 from pyalerts.py_alerts import email_alert
@@ -45,20 +45,20 @@ def train_and_eval_model(model, X_train, Y_train, X_val, Y_val, batch_size, epoc
 if __name__ == "__main__":
 
     # selected hyperparameters
-    batch_size = 100
-    epochs = 5
-    lr = 0.01
+    batch_size = 10
+    epochs = 25
+    lr = 0.001
     spect_type = 'mel'
     spect_size = '1024'
     hop_size = '1024'
     standard = True
 
     train = 'k fold'
-    n_folds = 10
+    n_folds = 0
 
     # load data
-    X_train, Y_train, X_val, Y_val, X_test, Y_test, input_shape = load_data(spect_type=spect_type, 
-    spect_size=spect_size, hop_size=hop_size, framing=True, window_size=128)
+    #X_train, Y_train, X_val, Y_val, X_test, Y_test, input_shape = load_data(spect_type=spect_type, 
+    #spect_size=spect_size, hop_size=hop_size, framing=True, window_size=128)
 
     # get the start date and time and format it
     s = datetime.datetime.today()
@@ -73,35 +73,41 @@ if __name__ == "__main__":
     saved_model = None
 
     # standardize inputs
-    if standard:
-        X_train, X_val, X_test = standardize(X_train, X_val, X_test)
+    #if standard:
+    #    X_train, X_val, X_test = standardize(X_train, X_val, X_test)
+
+    song_data = load_song_data(128)
+
+    input_shape = (128, 128, 4)
 
     if train == 'k fold':
-        kf = KFold(n_splits=n_folds)
-        X = np.concatenate((X_train, X_val))
-        Y = np.concatenate((Y_train, Y_val))
-        split = int(X.shape[0] - X.shape[0]/n_folds)
+        for song in song_data:
+            if not song["type"] == "test":
 
-        for i, (train_index, val_index) in enumerate(kf.split(X)):
-            print("Running fold", i+1, "of", n_folds)
+                n_folds += 1
 
-            # make train / test split
-            X_train = X[train_index]
-            Y_train = Y[train_index]
-            X_val  = X[val_index]
-            Y_val  = Y[val_index]
+                X_val = song["X"]
+                Y_val = song["Y"]
+                val_id = song["track id"]
 
-            model = build_model_SB(input_shape, lr, summary=False)
-            history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)
-            model.save(os.path.join(report_dir, 'final_model_loss_{0:0.4f}.hdf5'.format(score)))
-            training_history[0] = {'score' : score, 
-                                    'loss': history.history['loss'], 
-                                    'val_loss' : history.history['val_loss']}
-            saved_model = model
-            K.clear_session()
-            del history
-            del model
-            gc.collect()
+                print("Validation song is: {}".format(val_id))
+
+                X_train = [song["X"] for song in song_data if not ((song["type"] == "test") and song["track id"] == val_id)]
+                X_train = np.vstack(X_train)
+                Y_train = [song["Y"] for song in song_data if not ((song["type"] == "test") and song["track id"] == val_id)]
+                Y_train = np.vstack(Y_train)
+
+                model = build_model_SB(input_shape, lr, summary=False)
+                history, score = train_and_eval_model(model, X_train, Y_train, X_val, Y_val, batch_size, epochs)
+                model.save(os.path.join(report_dir, 'final_model_loss_{0:0.4f}.hdf5'.format(score)))
+                training_history[val_id] = {'score' : score, 
+                                            'loss': history.history['loss'], 
+                                            'val_loss' : history.history['val_loss']}
+                saved_model = model
+                K.clear_session()
+                del history
+                del model
+                gc.collect()
     else:
         model = build_model_SB(input_shape, lr, summary=False)
         history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)

@@ -18,8 +18,6 @@ def augmentation():
         track_id = song.split('/')[len(song.split('/'))-1][0:3]
         track_type = song.split('/')[len(song.split('/'))-2]
 
-        print(song)
-
         if not os.path.isdir(os.path.join(song, "augmented")):
             os.makedirs(os.path.join(song, "augmented")) # create new dir to store augmented stems
 

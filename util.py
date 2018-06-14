@@ -25,12 +25,8 @@ def load_song_data(window_size):
     for idx, song in enumerate(glob.glob("data/*.pkl")):
 
         # data holders
-        X_train = []
-        Y_train = []
-        X_val = []
-        Y_val = []
-        X_test = []
-        Y_test = []
+        X = []
+        Y = []
         
         track_id = int(os.path.basename(song).split("_")[2].strip(".pkl"))     
         
@@ -54,21 +50,22 @@ def load_song_data(window_size):
 
             if b_mean > lim and b_mean > lim and o_mean > lim and v_mean > lim:
                 if   track_id in train_ids:
-                    X_train.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
-                    Y_train.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+                    data_type = "train"
+                    X.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+                    Y.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
                 elif track_id in val_ids:
-                    X_val.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
-                    Y_val.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+                    data_type = "val"
+                    X.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+                    Y.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
                 elif track_id in test_ids:
-                    X_test.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
-                    Y_test.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
+                    data_type = "test"
+                    X.append(np.dstack((bass_spect, drums_spect, other_spect, vocals_spect)))
+                    Y.append(np.array((row['drums ratio'], row['other ratio'], row['vocals ratio'])))
             else:
                 discarded += 1
 
-        song_data.append({"track id" : track_id, 
-                          "X_train" : np.array(X_train), "Y_train" : np.array(Y_train),
-                          "X_val" : np.array(X_val), "Y_val" : np.array(Y_val),
-                          "X_test" : np.array(X_test), "Y_test" : np.array(Y_test)})
+        song_data.append({"track id" : track_id, "type" : data_type,
+                          "X" : np.array(X), "Y" : np.array(Y)})
 
     print("\nDiscarded {0:d} frames with energy below the threshold.".format(discarded))
 
@@ -211,8 +208,10 @@ def generate_report(report_dir, r):
         results.write("End time:   {}\n".format(r["end time"]))
         results.write("Runtime:    {}\n\n".format(r["elapsed time"]))
         results.write("--- MSE RESULTS ---\n")
-        for epoch, val_loss in enumerate(r["training history"][0]["val_loss"]):
-            results.write("Epoch {0}: {1:0.6f}\n".format(epoch+1, val_loss))
+        for track_id, fold in r["training history"].items():
+            results.write("Validation results for track {}\n".format(track_id))
+            for epoch, val_loss in enumerate(fold["val_loss"]):
+                results.write("Epoch {0}: {1:0.6f}\n".format(epoch+1, val_loss))
         results.write("\n--- TRAINING DETAILS ---\n")
         results.write("Batch size:  {0}\n".format(r["batch size"]))
         results.write("Epochs:      {0}\n".format(r["epochs"]))
