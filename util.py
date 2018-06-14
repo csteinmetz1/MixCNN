@@ -211,10 +211,14 @@ def generate_report(report_dir, r):
         results.write("End time:   {}\n".format(r["end time"]))
         results.write("Runtime:    {}\n\n".format(r["elapsed time"]))
         results.write("--- MSE RESULTS ---\n")
+        val_losses = []
         for track_id, fold in r["training history"].items():
             results.write("Validation results for track {}\n".format(track_id))
             for epoch, val_loss in enumerate(fold["val_loss"]):
                 results.write("Epoch {0}: {1:0.6f}\n".format(epoch+1, val_loss))
+                val_losses.append(val_loss)
+        final_loss = np.mean(val_losses)
+        results.write("Final average validation loss: {}\n".format(final_loss))
         results.write("\n--- TRAINING DETAILS ---\n")
         results.write("Batch size:  {0}\n".format(r["batch size"]))
         results.write("Epochs:      {0}\n".format(r["epochs"]))
@@ -228,3 +232,5 @@ def generate_report(report_dir, r):
         results.write("Standardize: {0}\n\n".format(r["standard"]))
         results.write("\n--- NETWORK ARCHITECTURE ---\n")
         r["model"].summary(print_fn=lambda x: results.write(x + '\n'))
+        
+        return final_loss

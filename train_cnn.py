@@ -46,7 +46,7 @@ if __name__ == "__main__":
 
     # selected hyperparameters
     batch_size = 10
-    epochs = 25
+    epochs = 1
     lr = 0.001
     spect_type = 'mel'
     spect_size = '1024'
@@ -142,7 +142,7 @@ if __name__ == "__main__":
                    "train" : train,
                    "folds" : n_folds}
 
-    generate_report(report_dir, report_data)
+    final_loss = generate_report(report_dir, report_data)
     pickle.dump(training_history, open(os.path.join(report_dir, "training_history.pkl"), "wb"), protocol=2)
 
     # email report
@@ -150,4 +150,4 @@ if __name__ == "__main__":
         report_details = report_fp.read()
         alert = email_alert()
         alert.send(subject="MixCNN Train Cycle {0}-{1:0>2}-{2:0>2} {3:0>2}:{4:0>2} [{5:0.4f}]".format(
-            s.year, s.month, s.day, s.hour, s.minute, score), message=report_details)
+            s.year, s.month, s.day, s.hour, s.minute, final_loss), message=report_details)
