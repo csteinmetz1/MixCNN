@@ -64,10 +64,11 @@ def load_song_data(window_size):
             else:
                 discarded += 1
 
-        song_data.append({"track id" : track_id, "type" : data_type,
-                          "X" : np.array(X), "Y" : np.array(Y)})
-        sys.stdout.write("Loaded songs: {:03d}\r".format(idx+1))
-        sys.stdout.flush()
+        if len(X) > 0:
+            song_data.append({"track id" : track_id, "type" : data_type,
+                            "X" : np.array(X), "Y" : np.array(Y)})
+            sys.stdout.write("Loaded songs: {:03d}\r".format(idx+1))
+            sys.stdout.flush()
 
     print("\nDiscarded {0:d} frames with energy below the threshold.".format(discarded))
 
