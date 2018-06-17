@@ -10,7 +10,7 @@ matplotlib.use('Agg')
 import matplotlib.pyplot as plt
 import numpy as np
 import pickle
-from util import load_data, load_song_data, standardize, generate_report
+from util import load_data, load_song_data, standardize, generate_report, load_dataset
 from models import *
 import datetime
 from pyalerts.py_alerts import email_alert
@@ -45,15 +45,15 @@ def train_and_eval_model(model, X_train, Y_train, X_val, Y_val, batch_size, epoc
 if __name__ == "__main__":
 
     # selected hyperparameters
-    batch_size = 10
-    epochs = 1
-    lr = 0.001
+    batch_size = 1
+    epochs = 50
+    lr = 0.01
     spect_type = 'mel'
     spect_size = '1024'
     hop_size = '1024'
     standard = True
 
-    train = 'k fold'
+    train = 'kapre'
     n_folds = 0
 
     # load data
@@ -76,9 +76,9 @@ if __name__ == "__main__":
     #if standard:
     #    X_train, X_val, X_test = standardize(X_train, X_val, X_test)
 
-    song_data = load_song_data(128)
+    #song_data = load_song_data(128)
 
-    input_shape = (128, 128, 4)
+    #nput_shape = (128, 128, 4)
 
     if train == 'k fold':
         for song in song_data:
@@ -108,6 +108,22 @@ if __name__ == "__main__":
                 del history
                 del model
                 gc.collect()
+    elif train == 'kapre':
+
+        X_train, Y_train, X_test, Y_test = load_dataset(augmented_data=False)
+        input_shape = (X_train.shape[1], X_train.shape[2])
+        model = build_kapre_model(input_shape, 16000, lr, summary=True)
+        history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)
+        model.save(os.path.join(report_dir, 'final_model_loss_{0:f}.hdf5'.format(score)))
+        training_history[0] = {'score' : score, 
+                                'loss': history.history['loss'], 
+                                'val_loss' : history.history['val_loss']}
+        saved_model = model
+        K.clear_session()
+        del history
+        del model
+        gc.collect()
+
     else:
         model = build_model_SB(input_shape, lr, summary=False)
         history, score = train_and_eval_model(model, X_train, Y_train, X_test, Y_test, batch_size, epochs)

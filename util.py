@@ -8,7 +8,7 @@ import librosa
 from datetime import datetime
 from skimage.transform import resize
 
-def load_audio_data(filepath, orig_sr=44100, target_sr=16000, framing=False, frame_size=10):
+def load_audio_data(filepath, orig_sr=44100, target_sr=16000, framing=False, frame_size=30):
     y, sr = librosa.load(filepath, sr=orig_sr)
     y_ds = librosa.resample(y, orig_sr, target_sr)
     length = frame_size*target_sr
@@ -38,9 +38,9 @@ def build_vectors(s, l):
     
     return X_samples, Y_samples
 
-def load_dataset(augmented_data=True):
+def load_dataset(augmented_data=False):
 
-    X_train = [] # (n, 1, 480000, 4)
+    X_train = [] # (n, 4, 480000)
     Y_train = [] # (n, 3)
 
     lev = pd.read_csv("data/level_analysis.csv")
@@ -76,6 +76,7 @@ def load_dataset(augmented_data=True):
                 Y_train += Y_samples
 
     X_train = np.vstack(X_train)
+    X_train = np.reshape(X_train, (X_train.shape[0], X_train.shape[2], X_train.shape[1]))
     Y_train = np.vstack(Y_train)
 
     X_test  = []
@@ -112,7 +113,11 @@ def load_dataset(augmented_data=True):
                 Y_test += Y_samples
 
     X_test = np.vstack(X_test)
+    X_test = np.reshape(X_test, (X_test.shape[0], X_test.shape[2], X_test.shape[1]))
     Y_test = np.vstack(Y_test)
+
+    print(X_train.shape)
+    print(Y_train.shape)
 
     return X_train, Y_train, X_test, Y_test
 
@@ -344,5 +349,3 @@ def generate_report(report_dir, r):
         r["model"].summary(print_fn=lambda x: results.write(x + '\n'))
         
         return final_loss
-
-load_dataset()
