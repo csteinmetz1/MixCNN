@@ -3,8 +3,118 @@ import sys
 import glob
 import pickle
 import numpy as np
+import pandas as pd
+import librosa
 from datetime import datetime
 from skimage.transform import resize
+
+def load_audio_data(filepath, orig_sr=44100, target_sr=16000, framing=False, frame_size=10):
+    y, sr = librosa.load(filepath, sr=orig_sr)
+    y_ds = librosa.resample(y, orig_sr, target_sr)
+    length = frame_size*target_sr
+
+    if framing:
+        output = librosa.util.frame(y_ds, frame_length=length, hop_length=length)
+    else:
+        output = librosa.util.fix_length(y_ds, length)
+
+    return output
+
+def get_X_and_Y():
+    pass
+    
+def build_vectors(s, l):
+
+    X_samples = []
+    Y_samples = []
+
+    if np.ndim(s["bass"]) > 1:
+        for idx in range(s["bass"].shape[1]):
+            X_samples.append(np.dstack((s["bass"][:,idx], s["drums"][:,idx], s["other"][:,idx], s["vocals"][:,idx])))
+            Y_samples.append(np.array((float(l['drums ratio']), float(l['other ratio']), float(l['vocals ratio']))))
+    else:
+        X_samples.append(np.dstack((s["bass"], s["drums"], s["other"], s["vocals"])))
+        Y_samples.append(np.array((float(l['drums ratio']), float(l['other ratio']), float(l['vocals ratio']))))
+    
+    return X_samples, Y_samples
+
+def load_dataset(augmented_data=True):
+
+    X_train = [] # (n, 1, 480000, 4)
+    Y_train = [] # (n, 3)
+
+    lev = pd.read_csv("data/level_analysis.csv")
+
+    # load training audio and level data 
+    train_path = os.path.join("DSD100", "Sources", "train", "*")
+    for idx, song in enumerate(glob.glob(train_path)):
+        track_id = int(os.path.basename(song)[0:4])
+
+        s = {"bass" : None, "drums" : None, "other" : None, "vocals" : None}
+        l = lev[(lev["augment type"] == "None") & (lev["track id"] == track_id)]
+        sys.stdout.write(" Loading song {: <20}\r".format(track_id))
+        sys.stdout.flush()
+
+        for stem in glob.glob(os.path.join(song, "normalized", "*.wav")):
+            stem_class = os.path.basename(stem).replace(".wav", "")
+            s[stem_class] = load_audio_data(stem)
+
+        X_samples, Y_samples = build_vectors(s, l)
+        X_train += X_samples
+        Y_train += Y_samples
+
+        if augmented_data:
+            for augment in glob.glob(os.path.join(song, "augmented", "*")):
+                augment_type = os.path.basename(augment)
+                l = lev[(lev["augment type"] == augment_type) & (lev["track id"] == track_id)]
+                for stem in glob.glob(os.path.join(augment, "normalized", "*.wav")):
+                    stem_class = os.path.basename(stem).replace(".wav", "")
+                    s[stem_class] = load_audio_data(stem)
+
+                X_samples, Y_samples = build_vectors(s, l)
+                X_train += X_samples
+                Y_train += Y_samples
+
+    X_train = np.vstack(X_train)
+    Y_train = np.vstack(Y_train)
+
+    X_test  = []
+    Y_test  = []
+
+    # load testing audio and level data 
+    train_path = os.path.join("DSD100", "Sources", "test", "*")
+    for idx, song in enumerate(glob.glob(train_path)):
+        track_id = int(os.path.basename(song)[0:4])
+
+        s = {"bass" : None, "drums" : None, "other" : None, "vocals" : None}
+        l = lev[(lev["augment type"] == "None") & (lev["track id"] == track_id)]
+        sys.stdout.write(" Loading song {: <20}\r".format(track_id))
+        sys.stdout.flush()
+
+        for stem in glob.glob(os.path.join(song, "normalized", "*.wav")):
+            stem_class = os.path.basename(stem).replace(".wav", "")
+            s[stem_class] = load_audio_data(stem)
+
+        X_samples, Y_samples = build_vectors(s, l)
+        X_test += X_samples
+        Y_test += Y_samples
+
+        if augmented_data:
+            for augment in glob.glob(os.path.join(song, "augmented", "*")):
+                augment_type = os.path.basename(augment)
+                l = lev[(lev["augment type"] == augment_type) & (lev["track id"] == track_id)]
+                for stem in glob.glob(os.path.join(augment, "normalized", "*.wav")):
+                    stem_class = os.path.basename(stem).replace(".wav", "")
+                    s[stem_class] = load_audio_data(stem)
+
+                X_samples, Y_samples = build_vectors(s, l)
+                X_test += X_samples
+                Y_test += Y_samples
+
+    X_test = np.vstack(X_test)
+    Y_test = np.vstack(Y_test)
+
+    return X_train, Y_train, X_test, Y_test
 
 def load_song_data(window_size):
 
@@ -234,3 +344,5 @@ def generate_report(report_dir, r):
         r["model"].summary(print_fn=lambda x: results.write(x + '\n'))
         
         return final_loss
+
+load_dataset()
