@@ -18,6 +18,8 @@ def augmentation():
         track_id = song.split('/')[len(song.split('/'))-1][0:3]
         track_type = song.split('/')[len(song.split('/'))-2]
 
+        print("Tracks processed: {}".format(idx))
+
         if not os.path.isdir(os.path.join(song, "augmented")):
             os.makedirs(os.path.join(song, "augmented")) # create new dir to store augmented stems
 
@@ -42,7 +44,7 @@ def augmentation():
                 sys.stdout.write(" Stretching by {: >4}     \r".format(factor))
                 sys.stdout.flush()
 
-            for semitones in [1]: #[-2, -1, 1, 2]:
+            for semitones in [0.5]: #[-1, -0.5, 0.5, 1]:
                 subdir = "shift_{}".format(semitones)
                 if not os.path.isdir(os.path.join(song, "augmented", subdir)):
                     os.makedirs(os.path.join(song, "augmented", subdir))
@@ -65,19 +67,21 @@ def level_analysis():
         print(song)
         track_id = song.split('/')[len(song.split('/'))-1][0:3]
         track_type = song.split('/')[len(song.split('/'))-2]
+        augment_type = "None"
         if not os.path.isdir(os.path.join(song, "normalized")):
             os.makedirs(os.path.join(song, "normalized")) # create new dir to store normalized stems
         print("Analyzing {}...".format(track_id))
-        database.append(OrderedDict({'type' : track_type,
-                                    'track id' : track_id, 
-                                    'bass LUFS' : 0,
-                                    'drums LUFS' : 0,
-                                    'other LUFS' : 0,
-                                    'vocals LUFS' : 0,
-                                    'bass ratio' : 0,
-                                    'drums ratio' : 0,
-                                    'other ratio' : 0,
-                                    'vocals ratio' : 0}))
+        song_data = OrderedDict({'type' : track_type,
+                                'track id' : track_id, 
+                                'augment type' : augment_type,
+                                'bass LUFS' : 0,
+                                'drums LUFS' : 0,
+                                'other LUFS' : 0,
+                                'vocals LUFS' : 0,
+                                'bass ratio' : 0,
+                                'drums ratio' : 0,
+                                'other ratio' : 0,
+                                'vocals ratio' : 0})
         for stem in glob.glob(os.path.join(song,"*.wav")):
 
             stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
@@ -88,12 +92,55 @@ def level_analysis():
             stem_loudness = meter.integrated(data)
 
             # store results
-            database[idx][stem_class + ' LUFS'] = stem_loudness
-            database[idx][stem_class + ' ratio'] = database[idx]['bass LUFS'] / stem_loudness
+            song_data[stem_class + ' LUFS'] = stem_loudness
+            song_data[stem_class + ' ratio'] = song_data['bass LUFS'] / stem_loudness
 
             # normalize to target and save .wav
             norm_data = pyloudnorm.normalize.loudness(data, stem_loudness, target)
+            print(norm_data.shape)
             sf.write(os.path.join(song, "normalized", stem_class + ".wav"), norm_data, rate)
+
+        database.append(song_data) # load new song data into database
+
+        # if augmented data is present load augmented mixes
+        if os.path.isdir(os.path.join(song, "augmented")):
+            for augment in glob.glob(os.path.join(song, "augmented", "*")):
+                augment_type = augment.split('/')[len(augment.split('/'))-1]
+                print("Analyzing {0} - {1}...".format(track_id, augment_type))
+                song_data = OrderedDict({'type' : track_type,
+                                        'track id' : track_id, 
+                                        'augment type' : augment_type,
+                                        'bass LUFS' : 0,
+                                        'drums LUFS' : 0,
+                                        'other LUFS' : 0,
+                                        'vocals LUFS' : 0,
+                                        'bass ratio' : 0,
+                                        'drums ratio' : 0,
+                                        'other ratio' : 0,
+                                        'vocals ratio' : 0})
+
+                aug_dir = os.path.join(song, "augmented", augment_type, "normalized")
+                if not os.path.isdir(aug_dir):
+                    os.makedirs(aug_dir)
+
+                for stem in glob.glob(os.path.join(augment,"*.wav")):
+
+                    stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
+                    # read file and measure LUFS
+                    data, rate = sf.read(stem)
+                    
+                    # measure loudness
+                    stem_loudness = meter.integrated(data)
+
+                    # store results
+                    song_data[stem_class + ' LUFS'] = stem_loudness
+                    song_data[stem_class + ' ratio'] = song_data['bass LUFS'] / stem_loudness
+
+                    # normalize to target and save .wav
+                    norm_data = pyloudnorm.normalize.loudness(data, stem_loudness, target)
+                    sf.write(os.path.join(aug_dir, stem_class + ".wav"), norm_data, rate)
+                
+                database.append(song_data)
 
     # create dataframe and save result to csv
     dataframe = pd.DataFrame(database)
@@ -114,13 +161,20 @@ def spectral_analysis(save_data=True, save_img=False):
         if not os.path.isdir(os.path.join(song, "img")):
             os.makedirs(os.path.join(song, "img"))
 
-        bass_ratio = float(level_analysis.loc[level_analysis['track id'] == int(track_id)]['bass ratio'])
-        drums_ratio = float(level_analysis.loc[level_analysis['track id'] == int(track_id)]['drums ratio'])
-        other_ratio = float(level_analysis.loc[level_analysis['track id'] == int(track_id)]['other ratio'])
-        vocals_ratio = float(level_analysis.loc[level_analysis['track id'] == int(track_id)]['vocals ratio'])
+        bass_ratio = level_analysis.loc[level_analysis['track id'] == int(track_id)]['bass ratio']
+        drums_ratio = level_analysis.loc[level_analysis['track id'] == int(track_id)]['drums ratio']
+        other_ratio = level_analysis.loc[level_analysis['track id'] == int(track_id)]['other ratio']
+        vocals_ratio = level_analysis.loc[level_analysis['track id'] == int(track_id)]['vocals ratio']
 
-        database = (OrderedDict({'type' : track_type,
+        augment_types = level_analysis.loc[level_analysis['track id'] == int(track_id)]['augment type']
+
+        for idx, augment_type in enumerate(augment_types):
+
+            print(augment_type)
+
+            database = OrderedDict({'type' : track_type,
                                     'track id' : track_id,
+                                    'augment type' : augment_type, 
                                     'bass ratio' : bass_ratio,
                                     'drums ratio' : drums_ratio,
                                     'other ratio' : other_ratio,
@@ -132,32 +186,31 @@ def spectral_analysis(save_data=True, save_img=False):
                                     'bass mel 1024 512' : [],
                                     'drums mel 1024 512' : [],
                                     'other mel 1024 512' : [],
-                                    'vocals mel 1024 512' : []}))
+                                    'vocals mel 1024 512' : []})
 
-        for stem in glob.glob(os.path.join(song, "normalized", "*.wav")):
-            stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
-            y, sr = librosa.load(stem, sr=44100, mono=True)
-            #y = librosa.util.fix_length(y, sr*180)
-            mel = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=1024, n_mels=128)
-            mel_hop = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=512, n_mels=128)
-            database[stem_class + ' mel 1024 1024'] = mel
-            database[stem_class + ' mel 1024 512'] = mel_hop
+            for stem in glob.glob(os.path.join(song, "normalized", "*.wav")):
+                stem_class = stem.split('/')[len(stem.split('/'))-1].split('.')[0]
+                y, sr = librosa.load(stem, sr=44100, mono=True)
+                mel = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=1024, n_mels=128)
+                mel_hop = librosa.feature.melspectrogram(y=y, sr=sr, n_fft=1024, hop_length=512, n_mels=128)
+                database[stem_class + ' mel 1024 1024'] = mel
+                database[stem_class + ' mel 1024 512'] = mel_hop
 
-            if save_img:
-                plt.figure(figsize=(5.5, 5))
-                librosa.display.specshow(librosa.power_to_db(mel[:,128:2*128], ref=np.max), fmax=22050, y_axis='mel', x_axis='time')
-                plt.tight_layout()
-                plt.savefig(os.path.join(song, "img", "mel_" + stem_class + ".png")) 
-                plt.close('all')
+                if save_img:
+                    plt.figure(figsize=(5.5, 5))
+                    librosa.display.specshow(librosa.power_to_db(mel[:,128:2*128], ref=np.max), fmax=22050, y_axis='mel', x_axis='time')
+                    plt.tight_layout()
+                    plt.savefig(os.path.join(song, "img", "mel_" + stem_class + ".png")) 
+                    plt.close('all')
 
-            sys.stdout.write("Saved Mel spectrogram data of track {1} - {0}   \r".format(stem_class, track_id))
-            sys.stdout.flush()
+                sys.stdout.write("Saved Mel spectrogram data of track {1} - {0}   \r".format(stem_class, track_id))
+                sys.stdout.flush()
 
-        # save ordereddict to pickle
-        if not os.path.isdir("data"):
-            os.makedirs("data")
-        pickle.dump(database, open(os.path.join("data", "spectral_analysis_{0}.pkl".format(track_id)), "wb"), protocol=2)
-        sys.stdout.write("Spectral analysis complete for track {0}             \n".format(track_id)) 
+            # save ordereddict to pickle
+            if not os.path.isdir("data"):
+                os.makedirs("data")
+            pickle.dump(database, open(os.path.join("data", "spectral_analysis_{0}.pkl".format(track_id)), "wb"), protocol=2)
+            sys.stdout.write("Spectral analysis complete for track {0}             \n".format(track_id)) 
 
 if __name__ == "__main__":
     if len(sys.argv) == 2:
