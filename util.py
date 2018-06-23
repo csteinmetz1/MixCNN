@@ -40,6 +40,7 @@ def load(level_analysis_path='level_analysis.csv', framing=False, frame_length=3
 		X.append(np.array(track_data))
 		Y.append(row['mix ratio'])
 
+	sys.stdout.write("* {} tracks loaded    \n".format(row_idx+1))
 	return X, Y
 
 def profile():
