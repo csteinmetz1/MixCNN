@@ -65,7 +65,7 @@ def generate_report(report_dir, r, msg=''):
                                                         fold.history["val_loss"])):
                 results.write("{0}: {1:0.6f}   {2:0.6f}\n".format(epoch+1, 
                                                 train_loss, val_loss))
-                val_losses.append(val_loss)
+            val_losses.append(val_loss)
             results.write("\n")
         final_loss = np.mean(val_losses)
         results.write("Avg. val loss: {0:0.6f}\n".format(final_loss))
