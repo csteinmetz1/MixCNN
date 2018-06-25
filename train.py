@@ -16,7 +16,7 @@ args = parser.parse_args()
 
 # selected hyperparameters
 batch_size = 1
-epochs = 500
+epochs = 45
 n_dft = 1024
 n_hop = 1024
 frame_length = 8.15
